@@ -1,0 +1,266 @@
+use std::cmp::Ordering;
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
+
+use sha3::{Digest, Keccak256};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SiblingSide {
+    Left,
+    Right,
+}
+
+impl SiblingSide {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SiblingSide::Left => "left",
+            SiblingSide::Right => "right",
+        }
+    }
+
+    pub fn proof_flag(&self) -> bool {
+        matches!(self, SiblingSide::Left)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProofStep {
+    pub level: usize,
+    pub sibling_index: usize,
+    pub sibling_hash: [u8; 32],
+    pub side: SiblingSide,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProofResult {
+    pub normalized_address: String,
+    pub index: usize,
+    pub total: usize,
+    pub lookups: usize,
+    pub leaf: [u8; 32],
+    pub root: [u8; 32],
+    pub root_level: usize,
+    pub steps: Vec<ProofStep>,
+}
+
+pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, String> {
+    let address = parse_address(address_str)?;
+    let db_dir = db_dir.to_path_buf();
+    let addresses_path = db_dir.join("addresses.bin");
+    let (index, steps, total) =
+        find_address_index(&addresses_path, &address)?.ok_or_else(|| {
+            "Address not found in addresses.bin (ensure file is sorted and matches input)".to_string()
+        })?;
+
+    let leaf_hash = hash_leaf(&address);
+    let mut proof_steps = Vec::new();
+    let mut level = 0usize;
+    let mut path_index = index;
+
+    loop {
+        let filename = format!("layer{:02}.bin", level);
+        let layer_path = db_dir.join(filename);
+        if !layer_path.exists() {
+            if level == 0 {
+                return Err("No layer files found (expected layer00.bin, layer01.bin, ...)".to_string());
+            }
+            return Err(format!(
+                "Missing layer file for level {} (expected {})",
+                level,
+                layer_path.display()
+            ));
+        }
+
+        let node_count = layer_node_count(&layer_path)?;
+        if node_count == 0 {
+            return Err(format!("Layer {:02} is empty", level));
+        }
+        if path_index >= node_count {
+            return Err(format!(
+                "Layer {:02} length {} too small for index {}",
+                level, node_count, path_index
+            ));
+        }
+
+        if node_count == 1 {
+            let root = read_node(&layer_path, 0)?;
+            return Ok(ProofResult {
+                normalized_address: normalize_hex(address_str),
+                index,
+                total,
+                lookups: steps,
+                leaf: leaf_hash,
+                root,
+                root_level: level,
+                steps: proof_steps,
+            });
+        }
+
+        let is_left = path_index % 2 == 0;
+        let sibling_idx = if is_left {
+            if path_index + 1 < node_count {
+                path_index + 1
+            } else {
+                path_index
+            }
+        } else {
+            path_index - 1
+        };
+
+        let sibling_hash = read_node(&layer_path, sibling_idx)?;
+        proof_steps.push(ProofStep {
+            level,
+            sibling_index: sibling_idx,
+            sibling_hash,
+            side: if is_left {
+                SiblingSide::Right
+            } else {
+                SiblingSide::Left
+            },
+        });
+
+        path_index /= 2;
+        level += 1;
+    }
+}
+
+pub fn parse_address(raw: &str) -> Result<[u8; 20], String> {
+    let cleaned = raw
+        .strip_prefix("0x")
+        .or_else(|| raw.strip_prefix("0X"))
+        .unwrap_or(raw);
+    if cleaned.len() != 40 {
+        return Err("Address must be 40 hex characters after 0x".to_string());
+    }
+
+    let mut buf = [0u8; 20];
+    hex::decode_to_slice(cleaned, &mut buf).map_err(|_| "Invalid hex in address".to_string())?;
+    Ok(buf)
+}
+
+pub fn normalize_hex(raw: &str) -> String {
+    if raw.starts_with("0x") || raw.starts_with("0X") {
+        raw.to_string()
+    } else {
+        format!("0x{raw}")
+    }
+}
+
+pub fn hash_leaf(address: &[u8; 20]) -> [u8; 32] {
+    let mut hasher = Keccak256::new();
+    hasher.update(address);
+    hasher.finalize().into()
+}
+
+pub fn layer_node_count(path: &Path) -> Result<usize, String> {
+    let len = File::open(path)
+        .and_then(|f| f.metadata())
+        .map_err(|e| format!("Failed to read {}: {e}", path.display()))?
+        .len();
+    if len % 32 != 0 {
+        return Err(format!(
+            "Layer file {} is not a multiple of 32 bytes ({len})",
+            path.display()
+        ));
+    }
+    Ok((len / 32) as usize)
+}
+
+pub fn read_node(path: &Path, index: usize) -> Result<[u8; 32], String> {
+    let mut file = File::open(path)
+        .map_err(|e| format!("Unable to open {}: {e}", path.display()))?;
+    file
+        .seek(SeekFrom::Start((index as u64) * 32))
+        .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
+    let mut buf = [0u8; 32];
+    file
+        .read_exact(&mut buf)
+        .map_err(|e| format!("Read failed in {}: {e}", path.display()))?;
+    Ok(buf)
+}
+
+pub fn find_address_index(
+    path: &Path,
+    target: &[u8; 20],
+) -> Result<Option<(usize, usize, usize)>, String> {
+    let mut file = File::open(path)
+        .map_err(|e| format!("Failed to open {}: {e}", path.display()))?;
+    let len = file
+        .metadata()
+        .map_err(|e| format!("Failed to stat {}: {e}", path.display()))?
+        .len();
+    if len % 20 != 0 {
+        return Err(format!("addresses.bin is not a multiple of 20 bytes ({len})"));
+    }
+    let total = (len / 20) as usize;
+    if total == 0 {
+        return Ok(None);
+    }
+
+    let mut low = 0usize;
+    let mut high = total;
+    let mut buf = [0u8; 20];
+    let mut steps = 0usize;
+
+    while low < high {
+        let mid = (low + high) / 2;
+        file
+            .seek(SeekFrom::Start((mid as u64) * 20))
+            .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
+        file
+            .read_exact(&mut buf)
+            .map_err(|e| format!("Read failed in {}: {e}", path.display()))?;
+        steps = steps.saturating_add(1);
+        match buf.cmp(target) {
+            Ordering::Less => {
+                low = mid + 1;
+            }
+            Ordering::Greater => {
+                high = mid;
+            }
+            Ordering::Equal => return Ok(Some((mid, steps, total))),
+        }
+    }
+
+    Ok(None)
+}
+
+pub fn to_hex32(bytes: &[u8; 32]) -> String {
+    format!("0x{}", hex::encode(bytes))
+}
+
+pub fn to_hex20(bytes: &[u8; 20]) -> String {
+    format!("0x{}", hex::encode(bytes))
+}
+
+pub fn ensure_db_present(db_dir: &Path) -> Result<(), String> {
+    let addresses = db_dir.join("addresses.bin");
+    if !addresses.exists() {
+        return Err(format!("Missing addresses file at {}", addresses.display()));
+    }
+
+    let first_layer = db_dir.join("layer00.bin");
+    if !first_layer.exists() {
+        return Err(format!(
+            "Missing first layer file at {} (expected layer00.bin)",
+            first_layer.display()
+        ));
+    }
+
+    Ok(())
+}
+
+pub fn available_layers(db_dir: &Path) -> Vec<PathBuf> {
+    let mut layers = Vec::new();
+    for idx in 0usize.. {
+        let filename = format!("layer{:02}.bin", idx);
+        let path = db_dir.join(filename);
+        if path.exists() {
+            layers.push(path);
+        } else {
+            break;
+        }
+    }
+    layers
+}
