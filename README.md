@@ -59,6 +59,10 @@ cargo run --release --bin merkle_api -- --listen 0.0.0.0:3000 --data-dir merkled
 - Claiming mints `1 DEMO` to the claimer: `claim(bytes32[] proof, bool[] proofFlags)`, where `proofFlags[i]` is `true` when `proof[i]` is the left sibling for that step.
 - You can pre-check off-chain/on-chain with `isEligible(address, proof, proofFlags)`.
 
+## Airdrop frontend
+- Open `frontend/index.html` directly in a browser (or serve the folder with `python -m http.server 8000`). It connects to MetaMask, fetches proofs from the REST API (e.g., `http://18.143.177.167:3000/proof/<address>`), and calls the deployed Sepolia contract at `0x786F94d1698a60eFCb26d25042395E7B2459442C`.
+- You can hit the lookup field to inspect any address; claiming requires the connected wallet to match the proof address. The API now sends permissive CORS headers so the static page can fetch it from any origin.
+
 ## Notes
 - The default output directory for Merkle data is `merkledb/` (git-ignored).
 - For large inputs, prefer `--release` to keep progress bars responsive.

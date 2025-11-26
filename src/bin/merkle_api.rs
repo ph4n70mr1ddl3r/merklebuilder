@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Json;
@@ -15,6 +15,7 @@ use merklebuilder::merkle::{
 use serde::Serialize;
 use tokio::net::TcpListener;
 use thiserror::Error;
+use tower_http::cors::{Any, CorsLayer};
 
 #[derive(Clone)]
 struct AppState {
@@ -178,10 +179,16 @@ async fn main() {
         db_dir: Arc::new(config.data_dir.clone()),
     };
 
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::OPTIONS])
+        .allow_headers(Any);
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/proof/:address", get(proof))
-        .with_state(state);
+        .with_state(state)
+        .layer(cors);
 
     let listener = match TcpListener::bind(config.listen).await {
         Ok(l) => l,
