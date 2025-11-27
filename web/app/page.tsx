@@ -77,7 +77,6 @@ export default function HomePage() {
   const [inviting, setInviting] = useState(false);
   const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
   const [lookup, setLookup] = useState("");
-  const [showMoreStats, setShowMoreStats] = useState(false);
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
@@ -159,13 +158,14 @@ export default function HomePage() {
       walletProviders[0]?.provider;
     if (!current?.on) return;
     const handler = (accounts: string[]) => {
+      resetConnection();
       if (!accounts || accounts.length === 0) {
-        resetConnection();
         setStatus({ tone: "bad", message: "Wallet disconnected." });
       } else {
-        setAccount(accounts[0]);
-        refreshOnChain(accounts[0]);
-        refreshProof(accounts[0]);
+        setStatus({
+          tone: "info",
+          message: "Wallet switched. Connect again to load status for the new account.",
+        });
       }
     };
     const chainHandler = () => window.location.reload();
@@ -380,9 +380,16 @@ export default function HomePage() {
 
       const liveContract = ctr ?? contract;
       let claimed = hasClaimed;
+      let inviterAddr: string | null = invitedBy;
       if (liveContract) {
-        claimed = await liveContract.hasClaimed(target);
-        setHasClaimed(Boolean(claimed));
+        const [claimedOnChain, inviterOnChain] = await Promise.all([
+          liveContract.hasClaimed(target),
+          liveContract.invitedBy(target),
+        ]);
+        claimed = Boolean(claimedOnChain);
+        setHasClaimed(claimed);
+        inviterAddr = inviterOnChain === ZeroAddress ? null : inviterOnChain;
+        setInvitedBy(inviterAddr);
       }
 
       if (claimed) {
@@ -390,7 +397,7 @@ export default function HomePage() {
           tone: "info",
           message: "Proof found. This wallet has already claimed.",
         });
-      } else if (invitesRequired && !invitedBy) {
+      } else if (invitesRequired && !inviterAddr) {
         setStatus({
           tone: "info",
           message: "You are qualified, but you need an invitation to claim right now.",
@@ -574,133 +581,176 @@ export default function HomePage() {
       </header>
 
       <main className="relative mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-14 pt-8 md:flex-row">
-        <div className="glass w-full p-6 md:w-2/3">
-          <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-wide text-slate-400">
-                Wallet
-              </p>
-                <p className="text-lg font-semibold">
-                  {account ? shorten(account) : "Not connected"}
-                </p>
-                <p className="text-sm text-slate-400">{networkLabel}</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowProviderModal(true)}
-                  disabled={walletProviders.length === 0}
-                  className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
-                >
-                  {account ? "Switch wallet" : "Connect wallet"}
-                </button>
-                <button
-                  onClick={() => refreshProof()}
-                  disabled={!account}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
-                >
-                  Refresh proof
-                </button>
-                <button
-                  onClick={disconnectWallet}
-                  disabled={!account}
-                  className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
-                >
-                  Disconnect
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={clsx(
-                "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
-                statusToneClasses[status.tone]
-              )}
-            >
-              <span
-                className={clsx(
-                  "mt-1 h-2.5 w-2.5 rounded-full",
-                  status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
-                  status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
-                  status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
-                )}
-              />
-              <span className="leading-relaxed">{status.message}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              <Stat label="Claimed" value={hasClaimed ? "Yes" : "No"} />
-              <Stat
-                label="Invitation"
-                value={
-                  invitesRequired
-                    ? invitedBy
-                      ? `Invited by ${shorten(invitedBy)}`
-                      : "Required"
-                    : "Not required"
-                }
-              />
-              {showMoreStats && (
-                <Stat
-                  label="Claim count"
-                  value={claimCount !== null ? claimCount.toString() : "—"}
-                />
-              )}
-            </div>
-            <button
-              onClick={() => setShowMoreStats((v) => !v)}
-              className="text-xs text-emerald-200 underline underline-offset-4"
-            >
-              {showMoreStats ? "Hide details" : "More details"}
-            </button>
-
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+        {!account ? (
+          <div className="glass w-full p-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-200">
-                    Eligibility
+                  <p className="text-sm uppercase tracking-wide text-slate-400">
+                    Wallet
                   </p>
-                  <p className="text-xs text-slate-400">
-                    Connect your wallet to check if you can claim.
-                  </p>
+                  <p className="text-lg font-semibold">Not connected</p>
+                  <p className="text-sm text-slate-400">Connect to view your status.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-3">
                   <button
-                    onClick={() => refreshProof()}
-                    disabled={!account || checkingProof}
-                    className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                    onClick={() => setShowProviderModal(true)}
+                    disabled={walletProviders.length === 0}
+                    className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
                   >
-                    {checkingProof ? "Checking…" : "Refresh status"}
+                    Connect wallet
                   </button>
                 </div>
               </div>
 
-              <div className="mt-4 text-sm text-slate-300">
-                {!account && "Connect to check your status."}
-                {account && hasClaimed && "You already claimed with this wallet."}
-                {account && !hasClaimed && proof && !invitesRequired && "You can claim with this wallet."}
-                {account && !hasClaimed && proof && invitesRequired && invitedBy && "You are invited and can claim."}
-                {account && !hasClaimed && invitesRequired && !invitedBy && "You are qualified, but you need an invitation to claim right now."}
-                {account && !proof && !checkingProof && !hasClaimed && "Refresh to check your eligibility."}
+              <div
+                className={clsx(
+                  "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                  statusToneClasses[status.tone]
+                )}
+              >
+                <span
+                  className={clsx(
+                    "mt-1 h-2.5 w-2.5 rounded-full",
+                    status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
+                    status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
+                    status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
+                  )}
+                />
+                <span className="leading-relaxed">{status.message}</span>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={claim}
-                  disabled={!canClaim}
-                  className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-                >
-                  {claiming ? "Claiming…" : "Claim 100 DEMO"}
-                </button>
-                {claimDisabledReason && (
-                  <p className="text-xs text-amber-200">{claimDisabledReason}</p>
-                )}
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold text-slate-200">How it works</p>
+                <ol className="mt-3 space-y-2 text-sm text-slate-300">
+                  <li>1. Connect wallet on {CHAIN_NAME}.</li>
+                  <li>2. Refresh status to check if you can claim.</li>
+                  <li>3. Claim on-chain if eligible.</li>
+                  <li>4. After claiming, share invites when the invite phase starts.</li>
+                </ol>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="glass w-full p-6 md:w-2/3">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm uppercase tracking-wide text-slate-400">
+                      Wallet
+                    </p>
+                    <p className="text-lg font-semibold">
+                      {account ? shorten(account) : "Not connected"}
+                    </p>
+                    <p className="text-sm text-slate-400">{networkLabel}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowProviderModal(true)}
+                      disabled={walletProviders.length === 0}
+                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
+                    >
+                      {account ? "Switch wallet" : "Connect wallet"}
+                    </button>
+                    <button
+                      onClick={() => refreshProof()}
+                      disabled={!account}
+                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
+                    >
+                      Refresh proof
+                    </button>
+                    <button
+                      onClick={disconnectWallet}
+                      disabled={!account}
+                      className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </div>
 
-        <div className="glass w-full space-y-6 p-6 md:w-1/3">
+                <div
+                  className={clsx(
+                    "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                    statusToneClasses[status.tone]
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "mt-1 h-2.5 w-2.5 rounded-full",
+                      status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
+                      status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
+                      status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
+                    )}
+                  />
+                  <span className="leading-relaxed">{status.message}</span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Stat label="Claimed" value={hasClaimed ? "Yes" : "No"} />
+                  <Stat
+                    label="Invitation"
+                    value={
+                      invitesRequired
+                        ? invitedBy
+                          ? `Invited by ${shorten(invitedBy)}`
+                          : "Required"
+                        : "Not required"
+                    }
+                  />
+                  <Stat
+                    label="Total claims"
+                    value={claimCount !== null ? claimCount.toString() : "—"}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-200">
+                        Eligibility
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Connect your wallet to check if you can claim.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => refreshProof()}
+                        disabled={!account || checkingProof}
+                        className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                      >
+                        {checkingProof ? "Checking…" : "Refresh status"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 text-sm text-slate-300">
+                    {account && hasClaimed && "You already claimed with this wallet."}
+                    {account && !hasClaimed && proof && !invitesRequired && "You can claim with this wallet."}
+                    {account && !hasClaimed && proof && invitesRequired && invitedBy && "You are invited and can claim."}
+                    {account && !hasClaimed && invitesRequired && !invitedBy && "You are qualified, but you need an invitation to claim right now."}
+                    {account && !proof && !checkingProof && !hasClaimed && "Refresh to check your eligibility."}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={claim}
+                      disabled={!canClaim}
+                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                    >
+                      {claiming ? "Claiming…" : "Claim 100 DEMO"}
+                    </button>
+                    {claimDisabledReason && (
+                      <p className="text-xs text-amber-200">{claimDisabledReason}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass w-full space-y-6 p-6 md:w-1/3">
           <div>
             <p className="text-sm uppercase tracking-wide text-slate-400">
               Invitations
@@ -721,6 +771,13 @@ export default function HomePage() {
               <p className="font-semibold text-slate-200">Invites unlock after claiming</p>
               <p className="mt-2 text-xs text-slate-400">
                 Claim first to view and manage your {maxInvites} invite slots.
+              </p>
+            </div>
+          ) : !invitesOpen ? (
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+              <p className="font-semibold text-slate-200">Invitation phase locked</p>
+              <p className="mt-2 text-xs text-slate-400">
+                Invites are not available yet. Check back once the invitation phase begins.
               </p>
             </div>
           ) : (
@@ -822,7 +879,9 @@ export default function HomePage() {
               <li>4. After claiming, share up to {maxInvites} invites and earn referral rewards automatically.</li>
             </ol>
           </div>
-        </div>
+          </div>
+          </>
+        )}
       </main>
       <ProviderModal
         open={showProviderModal}
