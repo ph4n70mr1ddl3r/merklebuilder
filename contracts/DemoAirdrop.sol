@@ -19,6 +19,10 @@ contract DemoAirdrop {
     bytes32 public constant MERKLE_ROOT =
         0x1361d28feffb65b743ef4da53ffc43a8695f103a14aceff0de7ed6178ace5197;
 
+    uint8 public constant MAX_INVITES = 5;
+    uint256 public constant REFERRAL_REWARD = 1 ether; // 1 DEMO per referral level
+    uint256 public immutable FREE_CLAIMS;
+
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
     mapping(address => bool) public hasClaimed;
@@ -32,16 +36,17 @@ contract DemoAirdrop {
 
     uint256 public claimCount;
 
-    uint256 public constant FREE_CLAIMS = 100;
-    uint8 public constant MAX_INVITES = 5;
-    uint256 public constant REFERRAL_REWARD = 1 ether; // 1 DEMO per referral level
-
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Claimed(address indexed account, uint256 amount);
     event InvitationCreated(address indexed inviter, address indexed invitee, uint8 slot);
     event InvitationRevoked(address indexed inviter, address indexed invitee, uint8 slot);
     event ReferralPaid(address indexed invitee, address indexed referrer, uint256 amount, uint256 level);
+
+    constructor(uint256 freeClaims_) {
+        require(freeClaims_ > 0, "DEMO: free claims must be >0");
+        FREE_CLAIMS = freeClaims_;
+    }
 
     // --- ERC20 ---
     function transfer(address to, uint256 value) external returns (bool) {
@@ -136,6 +141,7 @@ contract DemoAirdrop {
     /// @notice Create an invitation for another address (max 5 per claimer).
     function createInvitation(address invitee) external {
         require(hasClaimed[msg.sender], "DEMO: claim before inviting");
+        require(claimCount >= FREE_CLAIMS, "DEMO: invites locked until free claims filled");
         require(invitee != address(0) && invitee != msg.sender, "DEMO: invalid invitee");
         require(invitedBy[invitee] == address(0), "DEMO: already invited");
         require(!hasClaimed[invitee], "DEMO: invitee already claimed");

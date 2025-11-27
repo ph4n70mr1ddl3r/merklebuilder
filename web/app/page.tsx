@@ -60,7 +60,7 @@ export default function HomePage() {
   const [networkLabel, setNetworkLabel] = useState("Not connected");
 
   const [claimCount, setClaimCount] = useState<number | null>(null);
-  const [freeClaims, setFreeClaims] = useState<number>(100);
+  const [freeClaims, setFreeClaims] = useState<number>(2);
   const [maxInvites, setMaxInvites] = useState<number>(5);
   const [hasClaimed, setHasClaimed] = useState(false);
   const [invitedBy, setInvitedBy] = useState<string | null>(null);
@@ -79,6 +79,7 @@ export default function HomePage() {
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
+  const invitesOpen = claimCount !== null ? claimCount >= freeClaims : false;
   const canClaim =
     !!proof &&
     !hasClaimed &&
@@ -440,6 +441,13 @@ export default function HomePage() {
       setStatus({ tone: "bad", message: "Enter a valid Ethereum address to invite." });
       return;
     }
+    if (!invitesOpen) {
+      setStatus({
+        tone: "bad",
+        message: `Invitations unlock after the first ${freeClaims} claims are filled.`,
+      });
+      return;
+    }
     if (!hasEmptySlot) {
       setStatus({ tone: "bad", message: "No free invitation slots left to assign." });
       return;
@@ -716,7 +724,7 @@ export default function HomePage() {
             </p>
             <h3 className="text-xl font-semibold">Share access after you claim</h3>
             <p className="mt-2 text-sm text-slate-400">
-              Once you have claimed, you can create up to {maxInvites} invitations. Each invite enables one new claim when invites are required.
+              Once you have claimed, you can create up to {maxInvites} invitations. Invitations open after the first {freeClaims} free claims are filled.
             </p>
           </div>
 
@@ -794,14 +802,14 @@ export default function HomePage() {
                 />
                 <button
                   onClick={createInvite}
-                  disabled={!account || !hasClaimed || inviting || !hasEmptySlot}
+                  disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
                   className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   {inviting ? "Creating…" : "Create invite"}
                 </button>
               </div>
               <p className="text-xs text-slate-400">
-                Requires that you have already claimed. Revoke before a claim to free a slot; claimed invites stay locked.
+                Requires that you have already claimed. Invites unlock after {freeClaims} claims. Revoke before a claim to free a slot; claimed invites stay locked.
               </p>
             </div>
           </div>
