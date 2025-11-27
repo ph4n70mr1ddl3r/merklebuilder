@@ -1,5 +1,12 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Sora } from "next/font/google";
+
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sora",
+});
 
 export const metadata: Metadata = {
   title: "DEMO Airdrop",
@@ -9,7 +16,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-ink text-slate-50">{children}</body>
+      <body className={`${sora.className} min-h-screen bg-ink text-slate-50`}>
+        {children}
+      </body>
     </html>
   );
 }

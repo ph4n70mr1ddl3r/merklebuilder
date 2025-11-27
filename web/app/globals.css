@@ -1,24 +1,25 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
+  --bg: radial-gradient(120% 120% at 20% 20%, #162033, #0c1220 55%, #060910 100%);
+  --card: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(120% 120% at 20% 20%, #142135, #0b1018 55%, #070b11 100%);
+  background: var(--bg);
   color: #e8f0ff;
-  font-family: "Space Grotesk", "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sora), "Inter", system-ui, -apple-system, sans-serif;
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--card);
+  border: 1px solid var(--card-border);
   border-radius: 18px;
   backdrop-filter: blur(10px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);

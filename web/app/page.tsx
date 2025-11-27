@@ -78,7 +78,7 @@ export default function HomePage() {
   const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
   const [lookup, setLookup] = useState("");
   const [recipient, setRecipient] = useState("");
-  const [recipient, setRecipient] = useState("");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
@@ -478,10 +478,29 @@ export default function HomePage() {
       setStatus({ tone: "bad", message: "No free invitation slots left to assign." });
       return;
     }
+    const target = getAddress(invitee);
+    try {
+      const [alreadyClaimed, existingInviter] = await Promise.all([
+        contract.hasClaimed(target),
+        contract.invitedBy(target),
+      ]);
+      if (alreadyClaimed) {
+        setStatus({ tone: "bad", message: "That address has already claimed." });
+        return;
+      }
+      if (existingInviter !== ZeroAddress) {
+        setStatus({ tone: "bad", message: "That address is already invited." });
+        return;
+      }
+    } catch (err: any) {
+      console.error(err);
+      setStatus({ tone: "bad", message: "Unable to validate invitee." });
+      return;
+    }
     try {
       setInviting(true);
       setStatus({ tone: "info", message: "Creating invitation…" });
-      const tx = await contract.createInvitation(invitee);
+      const tx = await contract.createInvitation(target);
       setStatus({
         tone: "info",
         message: `Tx sent: ${tx.hash.slice(0, 10)}… waiting for confirmation.`,
@@ -492,10 +511,19 @@ export default function HomePage() {
       await refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
-      setStatus({
-        tone: "bad",
-        message: err?.message || "Failed to create invitation.",
-      });
+      const msg = err?.message || "";
+      if (msg.includes("already claimed")) {
+        setStatus({ tone: "bad", message: "Invite failed: that address has already claimed." });
+      } else if (msg.includes("already invited")) {
+        setStatus({ tone: "bad", message: "Invite failed: that address is already invited." });
+      } else if (msg.includes("no invites")) {
+        setStatus({ tone: "bad", message: "Invite failed: you have no invites left." });
+      } else {
+        setStatus({
+          tone: "bad",
+          message: err?.message || "Failed to create invitation.",
+        });
+      }
     } finally {
       setInviting(false);
     }
@@ -556,6 +584,19 @@ export default function HomePage() {
     return null;
   }, [account, contract, hasClaimed, invitesRequired, invitedBy, proof]);
 
+  const copyToClipboard = async (value: string, key: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard?.writeText(value);
+      setCopiedKey(key);
+      setTimeout(() => {
+        setCopiedKey((prev) => (prev === key ? null : prev));
+      }, 1200);
+    } catch (err) {
+      console.error("Copy failed", err);
+    }
+  };
+
   return (
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500 blur-[120px] opacity-30" />
@@ -590,7 +631,24 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="relative mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-14 pt-8 md:flex-row">
+      <section className="mx-auto max-w-6xl px-4 pt-6">
+        <div className="glass w-full p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-400">How it works</p>
+              <h3 className="text-xl font-semibold text-slate-50">Claim and invite in four steps</h3>
+            </div>
+          </div>
+          <ol className="mt-3 grid gap-2 text-sm text-slate-300 md:grid-cols-4">
+            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">1. Connect wallet on {CHAIN_NAME}.</li>
+            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">2. Refresh status to check if you can claim.</li>
+            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">3. Claim if eligible; choose where tokens go.</li>
+            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">4. After claiming, create invites when the invite phase opens.</li>
+          </ol>
+        </div>
+      </section>
+
+      <main className="relative mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-14 pt-4 md:flex-row">
         {!account ? (
           <div className="glass w-full p-6">
             <div className="flex flex-col gap-4">
@@ -643,16 +701,27 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="glass w-full p-6 md:w-2/3">
+            <div className="glass w-full p-6 md:w-1/2">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <p className="text-sm uppercase tracking-wide text-slate-400">
                       Wallet
                     </p>
-                    <p className="text-lg font-semibold">
-                      {account ? shorten(account) : "Not connected"}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-lg font-semibold font-mono text-slate-50 break-all">
+                        {account ?? "Not connected"}
+                      </p>
+                      {account && (
+                        <button
+                          onClick={() => copyToClipboard(account, "account")}
+                          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-emerald-100 hover:-translate-y-0.5"
+                        >
+                          ⧉
+                          {copiedKey === "account" && <span className="text-emerald-300">Copied</span>}
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-400">{networkLabel}</p>
                   </div>
                   <div className="flex gap-3">
@@ -774,7 +843,7 @@ export default function HomePage() {
           </div>
             </div>
 
-            <div className="glass w-full space-y-6 p-6 md:w-1/3">
+            <div className="glass w-full space-y-6 p-6 md:w-1/2">
           <div>
             <p className="text-sm uppercase tracking-wide text-slate-400">
               Invitations
@@ -809,7 +878,16 @@ export default function HomePage() {
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-sm font-semibold text-slate-200">Your status</p>
                 <div className="mt-3 grid gap-2 text-sm">
-                  <InfoRow label="Invited by" value={invitedBy ? shorten(invitedBy) : "No inviter"} />
+                  <InfoRow
+                    label="Invited by"
+                    value={invitedBy ?? "No inviter"}
+                    copyValue={invitedBy ?? undefined}
+                    monospace
+                    onCopy={
+                      invitedBy ? () => copyToClipboard(invitedBy, "invitedBy") : undefined
+                    }
+                    copied={copiedKey === "invitedBy"}
+                  />
                   <InfoRow label="Invites created" value={`${invitesCreated} / ${maxInvites}`} />
                 </div>
               </div>
@@ -824,6 +902,7 @@ export default function HomePage() {
                   {normalizedSlots.map((slot, idx) => {
                     const isPending = slot.invitee && !slot.used;
                     const isUsed = slot.invitee && slot.used;
+                    const displayInvitee = slot.invitee ?? "";
                     return (
                       <div
                         key={`slot-${idx}`}
@@ -832,12 +911,22 @@ export default function HomePage() {
                         <div>
                           <p className="text-xs uppercase tracking-wide text-slate-500">Slot {idx + 1}</p>
                           <p className="font-semibold text-slate-100">
-                            {isUsed
-                              ? `Claimed by ${shorten(slot.invitee)}`
-                              : isPending
-                              ? `Reserved for ${shorten(slot.invitee)}`
-                              : "Unused"}
+                            {isUsed ? "Claimed by" : isPending ? "Reserved for" : "Unused"}
                           </p>
+                          {slot.invitee && (
+                            <div className="mt-1 flex items-center gap-2 overflow-x-auto whitespace-nowrap text-[13px] font-mono text-slate-100">
+                              <span>{displayInvitee}</span>
+                              <button
+                                onClick={() => copyToClipboard(slot.invitee!, `slot-${idx}`)}
+                                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:-translate-y-0.5"
+                              >
+                                ⧉
+                                {copiedKey === `slot-${idx}` && (
+                                  <span className="text-emerald-300">Copied</span>
+                                )}
+                              </button>
+                            </div>
+                          )}
                           {isPending && (
                             <p className="text-xs text-slate-400">Waiting for invitee to claim.</p>
                           )}
@@ -928,11 +1017,38 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({
+  label,
+  value,
+  copyValue,
+  monospace,
+  onCopy,
+  copied,
+}: {
+  label: string;
+  value: string;
+  copyValue?: string;
+  monospace?: boolean;
+  onCopy?: () => void;
+  copied?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
       <span className="text-slate-400">{label}</span>
-      <span className="font-semibold text-slate-100">{value}</span>
+      <div className="flex items-center gap-2">
+        <span className={clsx("font-semibold text-slate-100", monospace && "font-mono break-all")}>
+          {value}
+        </span>
+        {copyValue && (
+          <button
+            onClick={onCopy ?? (() => navigator.clipboard?.writeText(copyValue))}
+            className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:-translate-y-0.5"
+          >
+            ⧉
+            {copied && <span className="text-emerald-300">Copied</span>}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
