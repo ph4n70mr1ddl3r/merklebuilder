@@ -62,7 +62,7 @@ cargo run --release --bin merkle_api -- --listen 0.0.0.0:3000 --data-dir merkled
 - Invitation slots: each claimer has five fixed slots; `createInvitation(address)` fills the next open slot (only after `freeClaims_` are taken), `revokeInvitation(uint8 slot)` frees an unused slot (before the invitee claims), and `getInvitations(address)` returns slot state (invitee + whether the slot was consumed by a claim).
 
 ## Airdrop frontend
-- Open `frontend/index.html` directly in a browser (or serve the folder with `python -m http.server 8000`). It connects to MetaMask, fetches proofs from the REST API (e.g., `http://18.143.177.167:3000/proof/<address>`), and calls the deployed Sepolia contract at `0x478b706854dfFB562eDB5E2E123E9cc4522Ef09C`.
+- Open `frontend/index.html` directly in a browser (or serve the folder with `python -m http.server 8000`). It connects to MetaMask, fetches proofs from the REST API (e.g., `http://18.143.177.167:3000/proof/<address>`), and calls the deployed Sepolia contract at `0x6ed2B0d918134c69008cA4Cc13CC84809fd8223C`.
 - You can hit the lookup field to inspect any address; claiming requires the connected wallet to match the proof address. The API now sends permissive CORS headers so the static page can fetch it from any origin.
 
 ## Notes

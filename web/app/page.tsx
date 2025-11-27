@@ -68,6 +68,7 @@ export default function HomePage() {
   const [invitationSlots, setInvitationSlots] = useState<
     { invitee: string | null; used: boolean }[]
   >([]);
+  const [showProviderModal, setShowProviderModal] = useState(false);
 
   const [proof, setProof] = useState<ProofResponse | null>(null);
   const [checkingProof, setCheckingProof] = useState(false);
@@ -76,16 +77,23 @@ export default function HomePage() {
   const [inviting, setInviting] = useState(false);
   const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
   const [lookup, setLookup] = useState("");
+  const [showMoreStats, setShowMoreStats] = useState(false);
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
   const invitesOpen = claimCount !== null ? claimCount >= freeClaims : false;
+  const freeClaimsRemaining = useMemo(() => {
+    if (claimCount === null) return null;
+    const remaining = freeClaims - claimCount;
+    return remaining > 0 ? remaining : 0;
+  }, [claimCount, freeClaims]);
   const canClaim =
     !!proof &&
     !hasClaimed &&
     (!invitesRequired || invitedBy !== null) &&
     !!contract &&
     !claiming;
+  const proofNeeded = !hasClaimed;
 
   const statusToneClasses = useMemo(
     () => ({
@@ -222,6 +230,7 @@ export default function HomePage() {
   };
 
   const connectWallet = async () => {
+    setShowProviderModal(false);
     const selected =
       walletProviders.find((p) => p.id === selectedProviderId)?.provider ??
       walletProviders[0]?.provider;
@@ -384,7 +393,7 @@ export default function HomePage() {
       } else if (invitesRequired && !invitedBy) {
         setStatus({
           tone: "info",
-          message: `Proof found, but an invitation is required after the first ${freeClaims} claims.`,
+          message: "You are qualified, but you need an invitation to claim right now.",
         });
       } else {
         setStatus({
@@ -406,7 +415,7 @@ export default function HomePage() {
   const claim = async () => {
     if (!contract || !proof || !account) return;
     if (invitesRequired && !invitedBy) {
-      setStatus({ tone: "bad", message: "An invitation is required after the first 100 claims." });
+      setStatus({ tone: "bad", message: "An invitation is required to claim now." });
       return;
     }
     try {
@@ -521,6 +530,15 @@ export default function HomePage() {
   }, [invitationSlots, maxInvites]);
   const hasEmptySlot = normalizedSlots.some((s) => !s.invitee);
 
+  const claimDisabledReason = useMemo(() => {
+    if (!account) return "Connect your wallet to claim.";
+    if (!proof && !hasClaimed) return "Load your Merkle proof to claim.";
+    if (hasClaimed) return "This wallet has already claimed.";
+    if (invitesRequired && !invitedBy) return "Invitation required to claim now.";
+    if (!contract) return "Contract unavailable; reconnect wallet.";
+    return null;
+  }, [account, contract, hasClaimed, invitesRequired, invitedBy, proof]);
+
   return (
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500 blur-[120px] opacity-30" />
@@ -558,46 +576,23 @@ export default function HomePage() {
       <main className="relative mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-14 pt-8 md:flex-row">
         <div className="glass w-full p-6 md:w-2/3">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-wide text-slate-400">
-                  Wallet
-                </p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-400">
+                Wallet
+              </p>
                 <p className="text-lg font-semibold">
                   {account ? shorten(account) : "Not connected"}
                 </p>
                 <p className="text-sm text-slate-400">{networkLabel}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <p className="text-xs uppercase tracking-wide text-slate-400">
-                  Provider
-                </p>
-                {walletProviders.length > 0 ? (
-                  <select
-                    value={selectedProviderId ?? walletProviders[0]?.id ?? ""}
-                    onChange={(e) => setSelectedProviderId(e.target.value)}
-                    className="min-w-56 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
-                  >
-                    {walletProviders.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                        {p.source === "eip6963" && p.rdns ? ` · ${p.rdns}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="text-sm text-slate-400">
-                    Waiting for wallets (EIP-6963 broadcast).
-                  </p>
-                )}
-              </div>
               <div className="flex gap-3">
                 <button
-                  onClick={connectWallet}
+                  onClick={() => setShowProviderModal(true)}
                   disabled={walletProviders.length === 0}
                   className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
                 >
-                  {account ? "Reconnect" : "Connect wallet"}
+                  {account ? "Switch wallet" : "Connect wallet"}
                 </button>
                 <button
                   onClick={() => refreshProof()}
@@ -633,13 +628,8 @@ export default function HomePage() {
               <span className="leading-relaxed">{status.message}</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               <Stat label="Claimed" value={hasClaimed ? "Yes" : "No"} />
-              <Stat
-                label="Claim count"
-                value={claimCount !== null ? claimCount.toString() : "—"}
-              />
-              <Stat label="Free claims" value={freeClaims.toString()} />
               <Stat
                 label="Invitation"
                 value={
@@ -650,55 +640,48 @@ export default function HomePage() {
                     : "Not required"
                 }
               />
+              {showMoreStats && (
+                <Stat
+                  label="Claim count"
+                  value={claimCount !== null ? claimCount.toString() : "—"}
+                />
+              )}
             </div>
+            <button
+              onClick={() => setShowMoreStats((v) => !v)}
+              className="text-xs text-emerald-200 underline underline-offset-4"
+            >
+              {showMoreStats ? "Hide details" : "More details"}
+            </button>
 
             <div className="rounded-xl border border-white/10 bg-white/5 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-200">
-                    Fetch proof
+                    Eligibility
                   </p>
                   <p className="text-xs text-slate-400">
-                    Uses the Merkle proof API; defaults to your connected address.
+                    Connect your wallet to check if you can claim.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    value={lookup}
-                    onChange={(e) => setLookup(e.target.value)}
-                    placeholder={account ?? "0x..."}
-                    className="w-60 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-                  />
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() =>
-                      refreshProof(lookup.trim() || account || undefined)
-                    }
-                    disabled={!account}
+                    onClick={() => refreshProof()}
+                    disabled={!account || checkingProof}
                     className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
                   >
-                    Lookup
+                    {checkingProof ? "Checking…" : "Refresh status"}
                   </button>
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-2">
-                {proof ? (
-                  proofRows.map((row) => (
-                    <div
-                      key={row.label}
-                      className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2 text-sm"
-                    >
-                      <span className="text-slate-400">{row.label}</span>
-                      <span className="font-mono text-emerald-200">
-                        {row.value}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-400">
-                    No proof loaded yet.
-                  </p>
-                )}
+              <div className="mt-4 text-sm text-slate-300">
+                {!account && "Connect to check your status."}
+                {account && hasClaimed && "You already claimed with this wallet."}
+                {account && !hasClaimed && proof && !invitesRequired && "You can claim with this wallet."}
+                {account && !hasClaimed && proof && invitesRequired && invitedBy && "You are invited and can claim."}
+                {account && !hasClaimed && invitesRequired && !invitedBy && "You are qualified, but you need an invitation to claim right now."}
+                {account && !proof && !checkingProof && !hasClaimed && "Refresh to check your eligibility."}
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -709,9 +692,9 @@ export default function HomePage() {
                 >
                   {claiming ? "Claiming…" : "Claim 100 DEMO"}
                 </button>
-                <p className="text-xs text-slate-400">
-                  Proof is always required. Invitations apply after the first {freeClaims} claims.
-                </p>
+                {claimDisabledReason && (
+                  <p className="text-xs text-amber-200">{claimDisabledReason}</p>
+                )}
               </div>
             </div>
           </div>
@@ -724,107 +707,131 @@ export default function HomePage() {
             </p>
             <h3 className="text-xl font-semibold">Share access after you claim</h3>
             <p className="mt-2 text-sm text-slate-400">
-              Once you have claimed, you can create up to {maxInvites} invitations. Invitations open after the first {freeClaims} free claims are filled.
+              Once you have claimed, you can create up to {maxInvites} invitations. Invitations open when the invite phase starts.
             </p>
+            {!invitesOpen && (
+              <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                Early-claim phase active. Invites unlock soon.
+              </p>
+            )}
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-sm font-semibold text-slate-200">Your status</p>
-            <div className="mt-3 grid gap-2 text-sm">
-              <InfoRow label="Invited by" value={invitedBy ? shorten(invitedBy) : "No inviter"} />
-              <InfoRow label="Invites created" value={`${invitesCreated} / ${maxInvites}`} />
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
-            <p className="mt-1 text-xs text-slate-400">
-              You have {maxInvites} fixed slots. Create uses the next open slot; revoke frees an unused one.
-            </p>
-
-            <div className="mt-3 grid gap-2">
-              {normalizedSlots.map((slot, idx) => {
-                const isPending = slot.invitee && !slot.used;
-                const isUsed = slot.invitee && slot.used;
-                return (
-                  <div
-                    key={`slot-${idx}`}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-3 text-sm"
-                  >
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Slot {idx + 1}</p>
-                      <p className="font-semibold text-slate-100">
-                        {isUsed
-                          ? `Claimed by ${shorten(slot.invitee)}`
-                          : isPending
-                          ? `Reserved for ${shorten(slot.invitee)}`
-                          : "Unused"}
-                      </p>
-                      {isPending && (
-                        <p className="text-xs text-slate-400">Waiting for invitee to claim.</p>
-                      )}
-                      {isUsed && <p className="text-xs text-slate-400">Invite consumed.</p>}
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      {isPending && (
-                        <button
-                          onClick={() => revokeInvite(idx)}
-                          disabled={!account || revokingSlot === idx}
-                          className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
-                        >
-                          {revokingSlot === idx ? "Revoking…" : "Revoke"}
-                        </button>
-                      )}
-                      {isUsed && (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                          Used
-                        </span>
-                      )}
-                      {!slot.invitee && (
-                        <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                          Open
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <p className="text-xs text-slate-400">Enter an address to assign to the next open slot.</p>
-              <div className="flex flex-wrap gap-2">
-                <input
-                  value={invitee}
-                  onChange={(e) => setInvitee(e.target.value)}
-                  placeholder="0x… invitee"
-                  className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-                />
-                <button
-                  onClick={createInvite}
-                  disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
-                  className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-                >
-                  {inviting ? "Creating…" : "Create invite"}
-                </button>
-              </div>
-              <p className="text-xs text-slate-400">
-                Requires that you have already claimed. Invites unlock after {freeClaims} claims. Revoke before a claim to free a slot; claimed invites stay locked.
+          {!account || !hasClaimed ? (
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+              <p className="font-semibold text-slate-200">Invites unlock after claiming</p>
+              <p className="mt-2 text-xs text-slate-400">
+                Claim first to view and manage your {maxInvites} invite slots.
               </p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold text-slate-200">Your status</p>
+                <div className="mt-3 grid gap-2 text-sm">
+                  <InfoRow label="Invited by" value={invitedBy ? shorten(invitedBy) : "No inviter"} />
+                  <InfoRow label="Invites created" value={`${invitesCreated} / ${maxInvites}`} />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  You have {maxInvites} fixed slots. Create uses the next open slot; revoke frees an unused one.
+                </p>
+
+                <div className="mt-3 grid gap-2">
+                  {normalizedSlots.map((slot, idx) => {
+                    const isPending = slot.invitee && !slot.used;
+                    const isUsed = slot.invitee && slot.used;
+                    return (
+                      <div
+                        key={`slot-${idx}`}
+                        className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-3 text-sm"
+                      >
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Slot {idx + 1}</p>
+                          <p className="font-semibold text-slate-100">
+                            {isUsed
+                              ? `Claimed by ${shorten(slot.invitee)}`
+                              : isPending
+                              ? `Reserved for ${shorten(slot.invitee)}`
+                              : "Unused"}
+                          </p>
+                          {isPending && (
+                            <p className="text-xs text-slate-400">Waiting for invitee to claim.</p>
+                          )}
+                          {isUsed && <p className="text-xs text-slate-400">Invite consumed.</p>}
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          {isPending && (
+                            <button
+                              onClick={() => revokeInvite(idx)}
+                              disabled={!account || revokingSlot === idx}
+                              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                            >
+                              {revokingSlot === idx ? "Revoking…" : "Revoke"}
+                            </button>
+                          )}
+                          {isUsed && (
+                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                              Used
+                            </span>
+                          )}
+                          {!slot.invitee && (
+                            <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+                              Open
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs text-slate-400">Enter an address to assign to the next open slot.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      value={invitee}
+                      onChange={(e) => setInvitee(e.target.value)}
+                      placeholder="0x… invitee"
+                      className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                    />
+                    <button
+                      onClick={createInvite}
+                      disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
+                      className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                    >
+                      {inviting ? "Creating…" : "Create invite"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Requires that you have already claimed. Invites unlock when the invite phase starts. Revoke before a claim to free a slot; claimed invites stay locked.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-4">
             <p className="text-sm font-semibold text-slate-200">How it works</p>
             <ol className="mt-3 space-y-2 text-sm text-slate-300">
               <li>1. Connect wallet on {CHAIN_NAME}.</li>
               <li>2. Fetch your Merkle proof from the API.</li>
-              <li>3. Claim on-chain (proof required). After {freeClaims} claims, an invitation is also required.</li>
+              <li>3. Claim on-chain (proof required while claimable).</li>
               <li>4. After claiming, share up to {maxInvites} invites and earn referral rewards automatically.</li>
             </ol>
           </div>
         </div>
       </main>
+      <ProviderModal
+        open={showProviderModal}
+        onClose={() => setShowProviderModal(false)}
+        providers={walletProviders}
+        selectedId={selectedProviderId ?? walletProviders[0]?.id ?? null}
+        onSelect={(id) => setSelectedProviderId(id)}
+        onConnect={connectWallet}
+      />
     </div>
   );
 }
@@ -843,6 +850,97 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
       <span className="text-slate-400">{label}</span>
       <span className="font-semibold text-slate-100">{value}</span>
+    </div>
+  );
+}
+
+function ProviderModal({
+  open,
+  onClose,
+  providers,
+  selectedId,
+  onSelect,
+  onConnect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  providers: ProviderOption[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onConnect: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4">
+      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl backdrop-blur">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-400">Select wallet</p>
+            <h3 className="text-xl font-semibold text-slate-50">Choose a provider to connect</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full border border-white/10 px-2 py-1 text-sm text-slate-300 hover:-translate-y-0.5"
+          >
+            Close
+          </button>
+        </div>
+
+        {providers.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-400">
+            Waiting for wallets (EIP-6963 broadcast). Open your wallet extension.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {providers.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => onSelect(p.id)}
+                className={clsx(
+                  "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition",
+                  selectedId === p.id
+                    ? "border-emerald-400/60 bg-emerald-400/10 shadow-[0_0_18px_rgba(52,211,153,0.25)]"
+                    : "border-white/10 bg-white/5 hover:-translate-y-0.5"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  {p.icon && (
+                    <img src={p.icon} alt={p.name} className="h-8 w-8 rounded-full border border-white/10" />
+                  )}
+                  <div>
+                    <p className="font-semibold text-slate-100">{p.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {p.source === "eip6963" && p.rdns ? p.rdns : "Injected provider"}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={clsx(
+                    "h-3 w-3 rounded-full border",
+                    selectedId === p.id ? "border-emerald-300 bg-emerald-300" : "border-white/30"
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:-translate-y-0.5"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConnect}
+            disabled={providers.length === 0}
+            className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+          >
+            Connect
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
