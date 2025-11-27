@@ -3,13 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import {
-  BrowserProvider,
-  Contract,
-  ZeroAddress,
-  getAddress,
-  isAddress,
-} from "ethers";
+import { ZeroAddress, getAddress, isAddress } from "ethers";
 import {
   API_BASE,
   CHAIN_ID,
@@ -18,6 +12,10 @@ import {
   DEMO_ABI,
   ProofResponse,
 } from "../lib/airdrop";
+import { useAccount, useConnect, useDisconnect, usePublicClient, useSwitchChain } from "wagmi";
+import { writeContract, readContract } from "wagmi/actions";
+import { sepolia } from "wagmi/chains";
+import { wagmiConfig } from "../lib/wagmi";
 
 declare global {
   interface Window {
@@ -26,37 +24,21 @@ declare global {
 }
 
 type Tone = "info" | "good" | "bad";
-type ProviderSource = "eip6963" | "injected";
-
-type ProviderOption = {
-  id: string;
-  name: string;
-  rdns?: string;
-  icon?: string;
-  provider: any;
-  source: ProviderSource;
-};
-
-type Eip6963ProviderDetail = {
-  info: { uuid: string; name: string; icon: string; rdns: string };
-  provider: any;
-};
 
 const shorten = (addr?: string | null) =>
   addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
 
-const hexChainId = `0x${CHAIN_ID.toString(16)}`;
-
 export default function HomePage() {
+  const { address: account, chain } = useAccount();
+  const { connectors, connect, status: connectStatus, error: connectError } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { switchChain } = useSwitchChain();
+  const publicClient = usePublicClient();
+
   const [status, setStatus] = useState<{ tone: Tone; message: string }>({
     tone: "info",
     message: "Connect your wallet to begin.",
   });
-  const [walletProviders, setWalletProviders] = useState<ProviderOption[]>([]);
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
-  const [account, setAccount] = useState<string | null>(null);
-  const [provider, setProvider] = useState<BrowserProvider | null>(null);
-  const [contract, setContract] = useState<Contract | null>(null);
   const [networkLabel, setNetworkLabel] = useState("Not connected");
 
   const [claimCount, setClaimCount] = useState<number | null>(null);
@@ -69,6 +51,7 @@ export default function HomePage() {
     { invitee: string | null; used: boolean }[]
   >([]);
   const [showProviderModal, setShowProviderModal] = useState(false);
+  const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(null);
 
   const [proof, setProof] = useState<ProofResponse | null>(null);
   const [checkingProof, setCheckingProof] = useState(false);
@@ -76,7 +59,6 @@ export default function HomePage() {
   const [invitee, setInvitee] = useState("");
   const [inviting, setInviting] = useState(false);
   const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
-  const [lookup, setLookup] = useState("");
   const [recipient, setRecipient] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showHow, setShowHow] = useState(false);
@@ -93,9 +75,8 @@ export default function HomePage() {
     !!proof &&
     !hasClaimed &&
     (!invitesRequired || invitedBy !== null) &&
-    !!contract &&
-    !claiming;
-  const proofNeeded = !hasClaimed;
+    !claiming &&
+    chain?.id === CHAIN_ID;
 
   const statusToneClasses = useMemo(
     () => ({
@@ -107,191 +88,66 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const seen = new Set<string>();
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<Eip6963ProviderDetail>).detail;
-      if (!detail?.info?.uuid || seen.has(detail.info.uuid)) return;
-      seen.add(detail.info.uuid);
-      setWalletProviders((prev) => {
-        if (prev.some((p) => p.id === detail.info.uuid)) return prev;
-        return [
-          ...prev,
-          {
-            id: detail.info.uuid,
-            name: detail.info.name,
-            rdns: detail.info.rdns,
-            icon: detail.info.icon,
-            provider: detail.provider,
-            source: "eip6963",
-          },
-        ];
-      });
-      setSelectedProviderId((prev) => prev ?? detail.info.uuid);
-    };
-
-    window.addEventListener("eip6963:announceProvider", handler as EventListener);
-    window.dispatchEvent(new Event("eip6963:requestProvider"));
-
-    const injected = (window as any).ethereum;
-    if (injected) {
-      setWalletProviders((prev) => {
-        if (prev.some((p) => p.id === "injected")) return prev;
-        return [
-          ...prev,
-          {
-            id: "injected",
-            name: "Injected (window.ethereum)",
-            provider: injected,
-            source: "injected",
-          },
-        ];
-      });
-      setSelectedProviderId((prev) => prev ?? "injected");
+    if (chain?.id === CHAIN_ID) {
+      setNetworkLabel(`${CHAIN_NAME} (${chain.id})`);
+    } else if (chain?.id) {
+      setNetworkLabel(`Wrong network (${chain.id})`);
+    } else {
+      setNetworkLabel("Not connected");
     }
-
-    return () => {
-      window.removeEventListener("eip6963:announceProvider", handler as EventListener);
-    };
-  }, []);
+  }, [chain]);
 
   useEffect(() => {
-    const current =
-      walletProviders.find((p) => p.id === selectedProviderId)?.provider ??
-      walletProviders[0]?.provider;
-    if (!current?.on) return;
-    const handler = (accounts: string[]) => {
-      resetConnection();
-      if (!accounts || accounts.length === 0) {
-        setStatus({ tone: "bad", message: "Wallet disconnected." });
-      } else {
-        setStatus({
-          tone: "info",
-          message: "Wallet switched. Connect again to load status for the new account.",
-        });
+    if (!account) {
+      resetUi();
+      setStatus({ tone: "info", message: "Connect your wallet to begin." });
+      return;
+    }
+    setRecipient(account);
+    const run = async () => {
+      if (chain?.id && chain.id !== CHAIN_ID && switchChain) {
+        try {
+          await switchChain({ chainId: CHAIN_ID });
+        } catch (err: any) {
+          setStatus({
+            tone: "bad",
+            message: "Wrong network. Please switch to Sepolia.",
+          });
+          return;
+        }
       }
+      await refreshOnChain(account);
+      await refreshProof(account);
     };
-    const chainHandler = () => window.location.reload();
-    current.on("accountsChanged", handler);
-    current.on("chainChanged", chainHandler);
-    return () => {
-      if (current?.removeListener) {
-        current.removeListener("accountsChanged", handler);
-        current.removeListener("chainChanged", chainHandler);
-      } else if (current?.off) {
-        current.off("accountsChanged", handler);
-        current.off("chainChanged", chainHandler);
-      }
-    };
-  }, [walletProviders, selectedProviderId]);
+    run();
+  }, [account, chain, switchChain]);
 
-  const resetConnection = () => {
-    setAccount(null);
-    setProvider(null);
-    setContract(null);
+  const resetUi = () => {
+    setClaimCount(null);
     setHasClaimed(false);
     setInvitedBy(null);
     setInvitesCreated(0);
+    setInvitationSlots([]);
     setProof(null);
     setRecipient("");
   };
 
-  const disconnectWallet = () => {
-    resetConnection();
-    setStatus({
-      tone: "info",
-      message: "Disconnected. Select a wallet provider and connect again.",
-    });
-  };
-
-  const ensureNetwork = async (prov: BrowserProvider) => {
-    const net = await prov.getNetwork();
-    if (net.chainId === BigInt(CHAIN_ID)) {
-      setNetworkLabel(`${CHAIN_NAME} (${net.chainId.toString()})`);
-      return;
-    }
-
-    try {
-      await prov.send("wallet_switchEthereumChain", [{ chainId: hexChainId }]);
-    } catch (switchErr: any) {
-      if (switchErr?.code === 4902) {
-        await prov.send("wallet_addEthereumChain", [
-          {
-            chainId: hexChainId,
-            chainName: CHAIN_NAME,
-            nativeCurrency: { name: "Ethereum", symbol: "ETH", decimals: 18 },
-            rpcUrls: ["https://rpc.sepolia.org"],
-            blockExplorerUrls: ["https://sepolia.etherscan.io"],
-          },
-        ]);
-      } else {
-        throw switchErr;
-      }
-    }
-
-    const finalNet = await prov.getNetwork();
-    setNetworkLabel(`${CHAIN_NAME} (${finalNet.chainId.toString()})`);
-  };
-
-  const connectWallet = async () => {
-    setShowProviderModal(false);
-    const selected =
-      walletProviders.find((p) => p.id === selectedProviderId)?.provider ??
-      walletProviders[0]?.provider;
-
-    if (!selected) {
+  const connectWallet = async (connectorId?: string) => {
+    const connector =
+      connectors.find((c) => c.id === connectorId) ??
+      connectors.find((c) => c.ready) ??
+      connectors[0];
+    if (!connector) {
       setStatus({
         tone: "bad",
-        message: "No wallet provider found. Open a wallet that supports EIP-6963.",
+        message: "No wallet connector available.",
       });
       return;
     }
-
     try {
       setStatus({ tone: "info", message: "Connecting wallet…" });
-      const prov = new BrowserProvider(selected);
-      await prov.send("eth_requestAccounts", []);
-      await ensureNetwork(prov);
-      const signer = await prov.getSigner();
-      const address = await signer.getAddress();
-
-      const code = await prov.getCode(CONTRACT_ADDRESS);
-      if (!code || code === "0x") {
-        setAccount(address);
-        setProvider(prov);
-        setContract(null);
-        setStatus({
-          tone: "bad",
-          message: `No contract found at ${shorten(
-            CONTRACT_ADDRESS
-          )}. Check your .env settings or deployment.`,
-        });
-        return;
-      }
-
-      const ctr = new Contract(CONTRACT_ADDRESS, DEMO_ABI, signer);
-      try {
-        await ctr.claimCount();
-      } catch (probeErr: any) {
-        console.error("Contract probe failed", probeErr);
-        setAccount(address);
-        setProvider(prov);
-        setContract(null);
-        setStatus({
-          tone: "bad",
-          message:
-            "Connected, but the contract at the configured address does not match the expected ABI. Check the address/chain.",
-        });
-        return;
-      }
-
-      setProvider(prov);
-      setContract(ctr);
-      setAccount(address);
-      setRecipient(address);
-      setStatus({ tone: "good", message: "Wallet connected. Fetching proof…" });
-      await refreshOnChain(address, ctr);
-      await refreshProof(address, ctr);
+      await connect({ connector, chainId: CHAIN_ID });
+      setShowProviderModal(false);
     } catch (err: any) {
       console.error(err);
       setStatus({
@@ -301,56 +157,87 @@ export default function HomePage() {
     }
   };
 
-  const refreshOnChain = async (addr?: string, ctr?: Contract | null) => {
-    if (!addr && !account) return;
+  const disconnectWallet = () => {
+    resetUi();
+    disconnect();
+    setStatus({
+      tone: "info",
+      message: "Disconnected. Select a wallet provider and connect again.",
+    });
+  };
+
+  const refreshOnChain = async (addr?: string) => {
     const target = addr ?? account;
-    const liveContract = ctr ?? contract;
-    if (!target || !liveContract) return;
+    if (!target) return;
     try {
       const [claimed, inviter, created, count, free, max, slots] = await Promise.all([
-        liveContract.hasClaimed(target),
-        liveContract.invitedBy(target),
-        liveContract.invitesCreated(target),
-        liveContract.claimCount(),
-        liveContract.FREE_CLAIMS(),
-        liveContract.MAX_INVITES(),
-        liveContract.getInvitations(target),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "hasClaimed",
+          args: [target as `0x${string}`],
+        }),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "invitedBy",
+          args: [target as `0x${string}`],
+        }),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "invitesCreated",
+          args: [target as `0x${string}`],
+        }),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "claimCount",
+        }),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "FREE_CLAIMS",
+        }),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "MAX_INVITES",
+        }),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "getInvitations",
+          args: [target as `0x${string}`],
+        }),
       ]);
-      setHasClaimed(Boolean(claimed));
-      setInvitedBy(inviter === ZeroAddress ? null : inviter);
-      setInvitesCreated(Number(created));
-      setClaimCount(Number(count));
-      setFreeClaims(Number(free));
-      setMaxInvites(Number(max));
       const invitees =
-        (slots && (slots as any).invitees ? ((slots as any).invitees as string[]) : undefined) ??
-        (Array.isArray(slots?.[0]) ? (slots[0] as string[]) : []);
+        (Array.isArray((slots as any)[0]) ? ((slots as any)[0] as string[]) : []) || [];
       const used =
-        (slots && (slots as any).used ? ((slots as any).used as boolean[]) : undefined) ??
-        (Array.isArray(slots?.[1]) ? (slots[1] as boolean[]) : []);
+        (Array.isArray((slots as any)[1]) ? ((slots as any)[1] as boolean[]) : []) || [];
       const parsedSlots =
         invitees?.map((inv, idx) => ({
           invitee: inv && inv !== ZeroAddress ? inv : null,
           used: Boolean(used?.[idx]),
         })) ?? [];
+
+      setHasClaimed(Boolean(claimed));
+      setInvitedBy((inviter as string) === ZeroAddress ? null : (inviter as string));
+      setInvitesCreated(Number(created));
+      setClaimCount(Number(count));
+      setFreeClaims(Number(free));
+      setMaxInvites(Number(max));
       setInvitationSlots(parsedSlots);
     } catch (err: any) {
       console.error(err);
-      const callFailed =
-        err?.code === "CALL_EXCEPTION" ||
-        err?.code === "BAD_DATA" ||
-        err?.data === "0x";
       setStatus({
         tone: "bad",
-        message: callFailed
-          ? "Unable to read contract state. Is the contract deployed at this address?"
-          : err?.message || "Failed to read on-chain state.",
+        message: err?.message || "Failed to read on-chain state.",
       });
-      setContract(null);
     }
   };
 
-  const refreshProof = async (addressOverride?: string, ctr?: Contract | null) => {
+  const refreshProof = async (addressOverride?: string) => {
     const target = addressOverride || account;
     if (!target) {
       setStatus({ tone: "info", message: "Connect your wallet to fetch proof." });
@@ -383,18 +270,30 @@ export default function HomePage() {
 
       setProof(data);
 
-      const liveContract = ctr ?? contract;
       let claimed = hasClaimed;
       let inviterAddr: string | null = invitedBy;
-      if (liveContract) {
+      try {
         const [claimedOnChain, inviterOnChain] = await Promise.all([
-          liveContract.hasClaimed(target),
-          liveContract.invitedBy(target),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "hasClaimed",
+            args: [target as `0x${string}`],
+          }),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "invitedBy",
+            args: [target as `0x${string}`],
+          }),
         ]);
         claimed = Boolean(claimedOnChain);
         setHasClaimed(claimed);
-        inviterAddr = inviterOnChain === ZeroAddress ? null : inviterOnChain;
+        inviterAddr =
+          (inviterOnChain as string) === ZeroAddress ? null : (inviterOnChain as string);
         setInvitedBy(inviterAddr);
+      } catch (innerErr) {
+        console.error(innerErr);
       }
 
       if (claimed) {
@@ -425,7 +324,7 @@ export default function HomePage() {
   };
 
   const claim = async () => {
-    if (!contract || !proof || !account) return;
+    if (!proof || !account) return;
     if (invitesRequired && !invitedBy) {
       setStatus({ tone: "bad", message: "An invitation is required to claim now." });
       return;
@@ -435,19 +334,31 @@ export default function HomePage() {
       setStatus({ tone: "bad", message: "Enter a valid recipient address." });
       return;
     }
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch (err: any) {
+        setStatus({ tone: "bad", message: "Switch to Sepolia to claim." });
+        return;
+      }
+    }
     try {
       setClaiming(true);
       setStatus({ tone: "info", message: "Submitting claim transaction…" });
-      const tx = await contract.claimTo(
-        recipientAddr,
-        proof.proof.map((p) => p.hash),
-        proof.proof_flags
-      );
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "claimTo",
+        args: [recipientAddr as `0x${string}`, proof.proof.map((p) => p.hash), proof.proof_flags],
+        account: account as `0x${string}`,
+      });
       setStatus({
         tone: "info",
-        message: `Tx sent: ${tx.hash.slice(0, 10)}… waiting for confirmation.`,
+        message: `Tx sent: ${hash.slice(0, 10)}… waiting for confirmation.`,
       });
-      await tx.wait();
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
       setStatus({ tone: "good", message: "Claim confirmed! DEMO minted." });
       setHasClaimed(true);
       await refreshOnChain(account);
@@ -463,7 +374,7 @@ export default function HomePage() {
   };
 
   const createInvite = async () => {
-    if (!contract || !account) return;
+    if (!account) return;
     if (!isAddress(invitee)) {
       setStatus({ tone: "bad", message: "Enter a valid Ethereum address to invite." });
       return;
@@ -482,8 +393,18 @@ export default function HomePage() {
     const target = getAddress(invitee);
     try {
       const [alreadyClaimed, existingInviter] = await Promise.all([
-        contract.hasClaimed(target),
-        contract.invitedBy(target),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "hasClaimed",
+          args: [target as `0x${string}`],
+        }),
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "invitedBy",
+          args: [target as `0x${string}`],
+        }),
       ]);
       if (alreadyClaimed) {
         setStatus({ tone: "bad", message: "That address has already claimed." });
@@ -498,15 +419,31 @@ export default function HomePage() {
       setStatus({ tone: "bad", message: "Unable to validate invitee." });
       return;
     }
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch (err: any) {
+        setStatus({ tone: "bad", message: "Switch to Sepolia to create invites." });
+        return;
+      }
+    }
     try {
       setInviting(true);
       setStatus({ tone: "info", message: "Creating invitation…" });
-      const tx = await contract.createInvitation(target);
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "createInvitation",
+        args: [target as `0x${string}`],
+        account: account as `0x${string}`,
+      });
       setStatus({
         tone: "info",
-        message: `Tx sent: ${tx.hash.slice(0, 10)}… waiting for confirmation.`,
+        message: `Tx sent: ${hash.slice(0, 10)}… waiting for confirmation.`,
       });
-      await tx.wait();
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
       setStatus({ tone: "good", message: "Invitation created." });
       setInvitee("");
       await refreshOnChain(account);
@@ -531,21 +468,37 @@ export default function HomePage() {
   };
 
   const revokeInvite = async (slotIndex: number) => {
-    if (!contract || !account) return;
+    if (!account) return;
     const slot = invitationSlots[slotIndex];
     if (!slot?.invitee) {
       setStatus({ tone: "bad", message: "Slot is empty; nothing to revoke." });
       return;
     }
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch (err: any) {
+        setStatus({ tone: "bad", message: "Switch to Sepolia to revoke." });
+        return;
+      }
+    }
     try {
       setRevokingSlot(slotIndex);
       setStatus({ tone: "info", message: "Revoking invitation…" });
-      const tx = await contract.revokeInvitation(slotIndex);
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "revokeInvitation",
+        args: [slotIndex],
+        account: account as `0x${string}`,
+      });
       setStatus({
         tone: "info",
-        message: `Tx sent: ${tx.hash.slice(0, 10)}… waiting for confirmation.`,
+        message: `Tx sent: ${hash.slice(0, 10)}… waiting for confirmation.`,
       });
-      await tx.wait();
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
       setStatus({ tone: "good", message: "Invitation revoked. Slot freed." });
       await refreshOnChain(account);
     } catch (err: any) {
@@ -580,10 +533,10 @@ export default function HomePage() {
     if (!account) return "Connect your wallet to claim.";
     if (!proof && !hasClaimed) return "Load your Merkle proof to claim.";
     if (hasClaimed) return "This wallet has already claimed.";
+    if (chain?.id !== CHAIN_ID) return `Switch to ${CHAIN_NAME} to claim.`;
     if (invitesRequired && !invitedBy) return "Invitation required to claim now.";
-    if (!contract) return "Contract unavailable; reconnect wallet.";
     return null;
-  }, [account, contract, hasClaimed, invitesRequired, invitedBy, proof]);
+  }, [account, chain, hasClaimed, invitesRequired, invitedBy, proof]);
 
   const nextStep = useMemo(() => {
     if (!account) return "Connect your wallet to get started.";
@@ -650,8 +603,9 @@ export default function HomePage() {
               {shorten(CONTRACT_ADDRESS)}
             </Link>
           </div>
-          <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
-            Proof API: <span className="font-mono text-emerald-300">{API_BASE}</span>
+          <div className="w-full rounded-full border border-white/10 bg-white/5 px-4 py-2 sm:w-auto">
+            Proof API:{" "}
+            <span className="break-all font-mono text-emerald-300">{API_BASE}</span>
           </div>
         </div>
       </header>
@@ -702,13 +656,13 @@ export default function HomePage() {
                   <p className="text-sm text-slate-400">Connect to view your status.</p>
                 </div>
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowProviderModal(true)}
-                    disabled={walletProviders.length === 0}
-                    className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
-                  >
-                    Connect wallet
-                  </button>
+                    <button
+                      onClick={() => setShowProviderModal(true)}
+                      disabled={connectors.length === 0}
+                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
+                    >
+                      Connect wallet
+                    </button>
                 </div>
               </div>
 
@@ -768,7 +722,7 @@ export default function HomePage() {
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={() => setShowProviderModal(true)}
-                      disabled={walletProviders.length === 0}
+                      disabled={connectors.length === 0}
                       className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-60"
                     >
                       {account ? "Switch wallet" : "Connect wallet"}
@@ -793,7 +747,7 @@ export default function HomePage() {
                 <div className="flex flex-col gap-2">
                   <div
                     className={clsx(
-                      "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                      "flex flex-wrap items-start gap-3 rounded-xl border px-4 py-3 text-sm",
                       statusToneClasses[status.tone]
                     )}
                   >
@@ -805,14 +759,14 @@ export default function HomePage() {
                         status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
                       )}
                     />
-                    <span className="leading-relaxed">{status.message}</span>
+                    <span className="leading-relaxed break-words">{status.message}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-xs text-slate-200">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
                       →
                     </span>
                     <span className="font-medium">Next step:</span>
-                    <span className="text-slate-100">{nextStep}</span>
+                    <span className="text-slate-100 break-words">{nextStep}</span>
                     {(checkingProof || claiming || inviting) && (
                       <span className="ml-2 h-3 w-3 animate-spin rounded-full border border-emerald-400 border-t-transparent" />
                     )}
@@ -989,7 +943,7 @@ export default function HomePage() {
                         </div>
 
                         {slot.invitee && (
-                          <div className="mt-2 flex items-center gap-2 overflow-x-auto whitespace-nowrap font-mono text-[13px] text-slate-100">
+                          <div className="mt-2 flex items-center gap-2 font-mono text-[13px] text-slate-100 break-all">
                             <span>{slot.invitee}</span>
                             <button
                               onClick={() => copyToClipboard(slot.invitee!, `slot-${idx}`)}
@@ -1042,10 +996,10 @@ export default function HomePage() {
       <ProviderModal
         open={showProviderModal}
         onClose={() => setShowProviderModal(false)}
-        providers={walletProviders}
-        selectedId={selectedProviderId ?? walletProviders[0]?.id ?? null}
-        onSelect={(id) => setSelectedProviderId(id)}
-        onConnect={connectWallet}
+        connectors={connectors}
+        selectedId={selectedConnectorId ?? connectors[0]?.id ?? null}
+        onSelect={(id) => setSelectedConnectorId(id)}
+        onConnect={() => connectWallet(selectedConnectorId ?? connectors[0]?.id)}
       />
     </div>
   );
@@ -1099,14 +1053,14 @@ function InfoRow({
 function ProviderModal({
   open,
   onClose,
-  providers,
+  connectors,
   selectedId,
   onSelect,
   onConnect,
 }: {
   open: boolean;
   onClose: () => void;
-  providers: ProviderOption[];
+  connectors: { id: string; name: string; ready?: boolean }[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onConnect: () => void;
@@ -1128,13 +1082,13 @@ function ProviderModal({
           </button>
         </div>
 
-        {providers.length === 0 ? (
+        {connectors.length === 0 ? (
           <p className="mt-4 text-sm text-slate-400">
             Waiting for wallets (EIP-6963 broadcast). Open your wallet extension.
           </p>
         ) : (
           <div className="mt-4 space-y-2">
-            {providers.map((p) => (
+            {connectors.map((p) => (
               <button
                 key={p.id}
                 onClick={() => onSelect(p.id)}
@@ -1146,14 +1100,9 @@ function ProviderModal({
                 )}
               >
                 <div className="flex items-center gap-3">
-                  {p.icon && (
-                    <img src={p.icon} alt={p.name} className="h-8 w-8 rounded-full border border-white/10" />
-                  )}
                   <div>
                     <p className="font-semibold text-slate-100">{p.name}</p>
-                    <p className="text-xs text-slate-400">
-                      {p.source === "eip6963" && p.rdns ? p.rdns : "Injected provider"}
-                    </p>
+                    <p className="text-xs text-slate-400">{p.ready ? "Ready" : "Unavailable"}</p>
                   </div>
                 </div>
                 <div
@@ -1176,7 +1125,7 @@ function ProviderModal({
           </button>
           <button
             onClick={onConnect}
-            disabled={providers.length === 0}
+            disabled={connectors.length === 0}
             className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
           >
             Connect

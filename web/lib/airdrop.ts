@@ -1,3 +1,5 @@
+import { parseAbi } from "viem";
+
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://18.143.177.167:3000";
 export const CONTRACT_ADDRESS =
@@ -6,7 +8,7 @@ export const CONTRACT_ADDRESS =
 export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "11155111");
 export const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME ?? "Sepolia";
 
-export const DEMO_ABI = [
+export const DEMO_ABI = parseAbi([
   "function claim(bytes32[] proof, bool[] proofFlags)",
   "function claimTo(address recipient, bytes32[] proof, bool[] proofFlags)",
   "function hasClaimed(address) view returns (bool)",
@@ -23,7 +25,7 @@ export const DEMO_ABI = [
   "function name() view returns (string)",
   "function symbol() view returns (string)",
   "function isEligible(address account, bytes32[] proof, bool[] proofFlags) view returns (bool)",
-];
+]);
 
 export type ProofNode = {
   hash: string;

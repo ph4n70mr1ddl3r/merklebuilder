@@ -79,5 +79,5 @@ cp .env.example .env.local # adjust API/contract addresses if needed
 npm install
 npm run dev
 ```
-- Defaults to Sepolia: contract `0x786F94d1698a60eFCb26d25042395E7B2459442C` and proof API `http://18.143.177.167:3000`.
+- Defaults to Sepolia: contract `0xD509174b3b70844381eBC7F25396F1e1AcaD5690` and proof API `http://18.143.177.167:3000`.
 - After claiming you can mint up to five invitations; claims after the first 100 require an invite plus a valid Merkle proof.
