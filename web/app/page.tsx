@@ -79,6 +79,7 @@ export default function HomePage() {
   const [lookup, setLookup] = useState("");
   const [recipient, setRecipient] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showHow, setShowHow] = useState(false);
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
@@ -635,11 +636,10 @@ export default function HomePage() {
         <h1 className="mt-6 text-4xl font-semibold tracking-tight md:text-5xl">
           Claim your DEMO with proof and invites
         </h1>
-        <p className="mt-3 text-lg text-slate-300 md:text-xl">
-          Fetch your Merkle proof from the REST API, submit a claim on-chain, and
-          share up to five invitations once you&apos;ve claimed.
+        <p className="mt-3 text-base text-slate-300 md:text-lg">
+          Submit your claim and manage invitations once you&apos;re eligible.
         </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-300">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-300">
           <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
             Contract:{" "}
             <Link
@@ -656,24 +656,40 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-4 pt-6">
-        <div className="glass w-full p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      <section className="mx-auto max-w-6xl px-3 pt-4 md:px-4">
+        <div className="glass w-full p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm uppercase tracking-wide text-slate-400">How it works</p>
-              <h3 className="text-xl font-semibold text-slate-50">Claim and invite in four steps</h3>
+              <h3 className="text-lg font-semibold text-slate-50">Claim and invite</h3>
             </div>
+            <button
+              onClick={() => setShowHow((v) => !v)}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-slate-100 hover:-translate-y-0.5"
+            >
+              {showHow ? "Hide steps" : "Show steps"}
+            </button>
           </div>
-          <ol className="mt-3 grid gap-2 text-sm text-slate-300 md:grid-cols-4">
-            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">1. Connect wallet on {CHAIN_NAME}.</li>
-            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">2. Refresh status to check if you can claim.</li>
-            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">3. Claim if eligible; choose where tokens go.</li>
-            <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">4. After claiming, create invites when the invite phase opens.</li>
-          </ol>
+          {showHow && (
+            <ol className="mt-3 grid gap-2 text-sm text-slate-300 md:grid-cols-4">
+              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                1. Connect wallet on {CHAIN_NAME}.
+              </li>
+              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                2. Check status to see if you can claim.
+              </li>
+              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                3. Send your claim if eligible; choose where tokens go.
+              </li>
+              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                4. After claiming, create invites when the invite phase opens.
+              </li>
+            </ol>
+          )}
         </div>
       </section>
 
-      <main className="relative mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-14 pt-4 md:flex-row">
+      <main className="relative mx-auto grid max-w-6xl grid-cols-1 gap-4 px-3 pb-14 pt-4 lg:grid-cols-2 lg:gap-6 lg:px-4">
         {!account ? (
           <div className="glass w-full p-6">
             <div className="flex flex-col gap-4">
@@ -726,7 +742,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="glass w-full p-6 md:w-1/2">
+            <div className="glass w-full p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
@@ -749,25 +765,25 @@ export default function HomePage() {
                     </div>
                     <p className="text-sm text-slate-400">{networkLabel}</p>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <button
                       onClick={() => setShowProviderModal(true)}
                       disabled={walletProviders.length === 0}
-                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
+                      className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-60"
                     >
                       {account ? "Switch wallet" : "Connect wallet"}
                     </button>
                     <button
                       onClick={() => refreshProof()}
                       disabled={!account}
-                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-40"
                     >
                       Check status
                     </button>
                     <button
                       onClick={disconnectWallet}
                       disabled={!account}
-                      className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
+                      className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-40"
                     >
                       Disconnect
                     </button>
@@ -803,7 +819,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                   <Stat label="Claimed" value={hasClaimed ? "Yes" : "No"} />
                   <Stat
                     label="Invitation"
@@ -835,7 +851,7 @@ export default function HomePage() {
                       <button
                         onClick={() => refreshProof()}
                         disabled={!account || checkingProof}
-                        className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                        className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-50"
                       >
                         {checkingProof ? "Checking…" : "Check status"}
                       </button>
@@ -850,16 +866,16 @@ export default function HomePage() {
                     {account && !proof && !checkingProof && !hasClaimed && "Refresh to check your eligibility."}
                   </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={claim}
-                  disabled={!canClaim}
-                  className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-                >
-                  {claiming ? "Sending…" : "Send claim"}
-                </button>
-                {claimDisabledReason && (
-                  <p className="text-xs text-amber-200">{claimDisabledReason}</p>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={claim}
+                      disabled={!canClaim}
+                      className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-50"
+                    >
+                      {claiming ? "Sending…" : "Send claim"}
+                    </button>
+                    {claimDisabledReason && (
+                      <p className="text-xs text-amber-200">{claimDisabledReason}</p>
                 )}
                 <div className="mt-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-300">
                   <label className="text-xs uppercase tracking-wide text-slate-400">
@@ -880,7 +896,7 @@ export default function HomePage() {
           </div>
             </div>
 
-            <div className="glass w-full space-y-6 p-6 md:w-1/2">
+            <div className="glass w-full space-y-6 p-6">
           <div>
             <p className="text-sm uppercase tracking-wide text-slate-400">
               Invitations
@@ -948,57 +964,48 @@ export default function HomePage() {
                   {normalizedSlots.map((slot, idx) => {
                     const isPending = slot.invitee && !slot.used;
                     const isUsed = slot.invitee && slot.used;
-                    const displayInvitee = slot.invitee ?? "";
                     return (
                       <div
                         key={`slot-${idx}`}
-                        className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-3 text-sm"
+                        className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-3 text-sm"
                       >
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-slate-500">Slot {idx + 1}</p>
-                          <p className="font-semibold text-slate-100">
-                            {isUsed ? "Claimed by" : isPending ? "Reserved for" : "Unused"}
-                          </p>
-                          {slot.invitee && (
-                            <div className="mt-1 flex items-center gap-2 overflow-x-auto whitespace-nowrap text-[13px] font-mono text-slate-100">
-                              <span>{displayInvitee}</span>
-                              <button
-                                onClick={() => copyToClipboard(slot.invitee!, `slot-${idx}`)}
-                                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:-translate-y-0.5"
-                              >
-                                ⧉
-                                {copiedKey === `slot-${idx}` && (
-                                  <span className="text-emerald-300">Copied</span>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                          {isPending && (
-                            <p className="text-xs text-slate-400">Waiting for invitee to claim.</p>
-                          )}
-                          {isUsed && <p className="text-xs text-slate-400">Invite consumed.</p>}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-col">
+                            <p className="text-xs uppercase tracking-wide text-slate-500">Slot {idx + 1}</p>
+                            <p className="font-semibold text-slate-100">
+                              {isUsed ? "Claimed by" : isPending ? "Reserved for" : "Unused"}
+                            </p>
+                          </div>
+                          <span
+                            className={clsx(
+                              "rounded-full border px-3 py-1 text-xs",
+                              isUsed && "border-white/10 bg-white/5 text-slate-300",
+                              isPending && "border-amber-300/50 bg-amber-300/10 text-amber-100",
+                              !slot.invitee && "border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
+                            )}
+                          >
+                            {isUsed ? "Used" : isPending ? "Reserved" : "Open"}
+                          </span>
                         </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          {isPending && (
+
+                        {slot.invitee && (
+                          <div className="mt-2 flex items-center gap-2 overflow-x-auto whitespace-nowrap font-mono text-[13px] text-slate-100">
+                            <span>{slot.invitee}</span>
                             <button
-                              onClick={() => revokeInvite(idx)}
-                              disabled={!account || revokingSlot === idx}
-                              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                              onClick={() => copyToClipboard(slot.invitee!, `slot-${idx}`)}
+                              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:-translate-y-0.5"
                             >
-                              {revokingSlot === idx ? "Revoking…" : "Revoke"}
+                              ⧉
+                              {copiedKey === `slot-${idx}` && (
+                                <span className="text-emerald-300">Copied</span>
+                              )}
                             </button>
-                          )}
-                          {isUsed && (
-                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                              Used
-                            </span>
-                          )}
-                          {!slot.invitee && (
-                            <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                              Open
-                            </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                        {isPending && (
+                          <p className="text-xs text-slate-400 mt-1">Waiting for invitee to claim.</p>
+                        )}
+                        {isUsed && <p className="text-xs text-slate-400 mt-1">Invite consumed.</p>}
                       </div>
                     );
                   })}
@@ -1006,21 +1013,21 @@ export default function HomePage() {
 
                 <div className="mt-4 space-y-2">
                   <p className="text-xs text-slate-400">Enter an address to assign to the next open slot.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <input
-                      value={invitee}
-                      onChange={(e) => setInvitee(e.target.value)}
-                      placeholder="0x… invitee"
-                      className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-                    />
-                    <button
-                      onClick={createInvite}
-                      disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
-                      className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-                    >
-                      {inviting ? "Creating…" : "Create invite"}
-                    </button>
-                  </div>
+                    <div className="flex flex-wrap gap-2">
+                      <input
+                        value={invitee}
+                        onChange={(e) => setInvitee(e.target.value)}
+                        placeholder="0x… invitee"
+                        className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                      />
+                      <button
+                        onClick={createInvite}
+                        disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
+                        className="w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-50"
+                      >
+                        {inviting ? "Creating…" : "Create invite"}
+                      </button>
+                    </div>
                   <p className="text-xs text-slate-400">
                     Requires that you have already claimed. Invites unlock when the invite phase starts. Revoke before a claim to free a slot; claimed invites stay locked.
                   </p>
