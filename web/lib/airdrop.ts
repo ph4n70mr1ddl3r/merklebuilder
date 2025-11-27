@@ -8,6 +8,7 @@ export const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME ?? "Sepolia";
 
 export const DEMO_ABI = [
   "function claim(bytes32[] proof, bool[] proofFlags)",
+  "function claimTo(address recipient, bytes32[] proof, bool[] proofFlags)",
   "function hasClaimed(address) view returns (bool)",
   "function invitedBy(address) view returns (address)",
   "function invitesCreated(address) view returns (uint8)",

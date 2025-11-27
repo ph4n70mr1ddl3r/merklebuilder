@@ -77,6 +77,8 @@ export default function HomePage() {
   const [inviting, setInviting] = useState(false);
   const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
   const [lookup, setLookup] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [recipient, setRecipient] = useState("");
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
@@ -190,6 +192,7 @@ export default function HomePage() {
     setInvitedBy(null);
     setInvitesCreated(0);
     setProof(null);
+    setRecipient("");
   };
 
   const disconnectWallet = () => {
@@ -284,6 +287,7 @@ export default function HomePage() {
       setProvider(prov);
       setContract(ctr);
       setAccount(address);
+      setRecipient(address);
       setStatus({ tone: "good", message: "Wallet connected. Fetching proof…" });
       await refreshOnChain(address, ctr);
       await refreshProof(address, ctr);
@@ -425,10 +429,16 @@ export default function HomePage() {
       setStatus({ tone: "bad", message: "An invitation is required to claim now." });
       return;
     }
+    const recipientAddr = recipient.trim() || account;
+    if (!isAddress(recipientAddr) || recipientAddr === ZeroAddress) {
+      setStatus({ tone: "bad", message: "Enter a valid recipient address." });
+      return;
+    }
     try {
       setClaiming(true);
       setStatus({ tone: "info", message: "Submitting claim transaction…" });
-      const tx = await contract.claim(
+      const tx = await contract.claimTo(
+        recipientAddr,
         proof.proof.map((p) => p.hash),
         proof.proof_flags
       );
@@ -734,20 +744,34 @@ export default function HomePage() {
                     {account && !proof && !checkingProof && !hasClaimed && "Refresh to check your eligibility."}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={claim}
-                      disabled={!canClaim}
-                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={claim}
+                  disabled={!canClaim}
+                  className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
                     >
                       {claiming ? "Claiming…" : "Claim 100 DEMO"}
                     </button>
                     {claimDisabledReason && (
-                      <p className="text-xs text-amber-200">{claimDisabledReason}</p>
-                    )}
-                  </div>
+                  <p className="text-xs text-amber-200">{claimDisabledReason}</p>
+                )}
+                <div className="mt-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-300">
+                  <label className="text-xs uppercase tracking-wide text-slate-400">
+                    Send tokens to
+                  </label>
+                  <input
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    placeholder={account ?? "0x..."}
+                    className="w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Default is your connected wallet. You can redirect the claim to another address.
+                  </p>
                 </div>
               </div>
+            </div>
+          </div>
             </div>
 
             <div className="glass w-full space-y-6 p-6 md:w-1/3">

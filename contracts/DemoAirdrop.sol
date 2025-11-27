@@ -38,7 +38,7 @@ contract DemoAirdrop {
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
-    event Claimed(address indexed account, uint256 amount);
+    event Claimed(address indexed account, address indexed recipient, uint256 amount);
     event InvitationCreated(address indexed inviter, address indexed invitee, uint8 slot);
     event InvitationRevoked(address indexed inviter, address indexed invitee, uint8 slot);
     event ReferralPaid(address indexed invitee, address indexed referrer, uint256 amount, uint256 level);
@@ -94,7 +94,16 @@ contract DemoAirdrop {
     /// @param proof Hashes from leaf to root.
     /// @param proofFlags `true` if the sibling at the same index in `proof` is the left node.
     function claim(bytes32[] calldata proof, bool[] calldata proofFlags) external {
+        claimTo(msg.sender, proof, proofFlags);
+    }
+
+    /// @notice Claim once using an inclusion proof for `msg.sender`, but mint to a recipient.
+    /// @param recipient Address to receive the tokens.
+    /// @param proof Hashes from leaf to root.
+    /// @param proofFlags `true` if the sibling at the same index in `proof` is the left node.
+    function claimTo(address recipient, bytes32[] calldata proof, bool[] calldata proofFlags) public {
         address account = msg.sender;
+        require(recipient != address(0), "DEMO: recipient zero");
         require(!hasClaimed[account], "DEMO: already claimed");
         require(proof.length == proofFlags.length, "DEMO: proof length mismatch");
 
@@ -109,9 +118,9 @@ contract DemoAirdrop {
         }
         hasClaimed[account] = true;
         claimCount += 1;
-        _mint(account, CLAIM_AMOUNT);
+        _mint(recipient, CLAIM_AMOUNT);
         _payReferrals(account);
-        emit Claimed(account, CLAIM_AMOUNT);
+        emit Claimed(account, recipient, CLAIM_AMOUNT);
     }
 
     /// @notice View helper to validate a proof off-chain or before claiming.
