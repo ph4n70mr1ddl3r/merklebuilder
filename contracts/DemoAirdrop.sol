@@ -24,6 +24,11 @@ contract DemoAirdrop {
     mapping(address => bool) public hasClaimed;
     mapping(address => address) public invitedBy; // inviter address (zero if none)
     mapping(address => uint8) public invitesCreated; // invitations created by an address
+    struct InvitationSlot {
+        address invitee;
+        bool used;
+    }
+    mapping(address => InvitationSlot[MAX_INVITES]) public invitationSlots; // fixed slots per inviter
 
     uint256 public claimCount;
 
@@ -34,7 +39,8 @@ contract DemoAirdrop {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Claimed(address indexed account, uint256 amount);
-    event InvitationCreated(address indexed inviter, address indexed invitee);
+    event InvitationCreated(address indexed inviter, address indexed invitee, uint8 slot);
+    event InvitationRevoked(address indexed inviter, address indexed invitee, uint8 slot);
     event ReferralPaid(address indexed invitee, address indexed referrer, uint256 amount, uint256 level);
 
     // --- ERC20 ---
@@ -93,6 +99,9 @@ contract DemoAirdrop {
             require(invitedBy[account] != address(0), "DEMO: invitation required");
         }
 
+        if (invitedBy[account] != address(0)) {
+            _markInviteUsed(invitedBy[account], account);
+        }
         hasClaimed[account] = true;
         claimCount += 1;
         _mint(account, CLAIM_AMOUNT);
@@ -128,13 +137,47 @@ contract DemoAirdrop {
     function createInvitation(address invitee) external {
         require(hasClaimed[msg.sender], "DEMO: claim before inviting");
         require(invitee != address(0) && invitee != msg.sender, "DEMO: invalid invitee");
-        require(invitesCreated[msg.sender] < MAX_INVITES, "DEMO: no invites left");
         require(invitedBy[invitee] == address(0), "DEMO: already invited");
         require(!hasClaimed[invitee], "DEMO: invitee already claimed");
 
-        invitesCreated[msg.sender] += 1;
+        uint8 slot = _findEmptySlot(msg.sender);
+        InvitationSlot storage s = invitationSlots[msg.sender][slot];
+        s.invitee = invitee;
+        s.used = false;
         invitedBy[invitee] = msg.sender;
-        emit InvitationCreated(msg.sender, invitee);
+        invitesCreated[msg.sender] += 1;
+        emit InvitationCreated(msg.sender, invitee, slot);
+    }
+
+    /// @notice Reclaim an unused invitation slot for a new invitee.
+    function revokeInvitation(uint8 slot) external {
+        require(slot < MAX_INVITES, "DEMO: invalid slot");
+        InvitationSlot storage s = invitationSlots[msg.sender][slot];
+        address invitee = s.invitee;
+        require(invitee != address(0), "DEMO: slot empty");
+        require(!s.used, "DEMO: invite already used");
+        require(!hasClaimed[invitee], "DEMO: invitee already claimed");
+
+        invitedBy[invitee] = address(0);
+        s.invitee = address(0);
+        s.used = false;
+        if (invitesCreated[msg.sender] > 0) {
+            invitesCreated[msg.sender] -= 1;
+        }
+        emit InvitationRevoked(msg.sender, invitee, slot);
+    }
+
+    /// @notice View helper to return the fixed invitation slots for an inviter.
+    function getInvitations(address inviter)
+        external
+        view
+        returns (address[MAX_INVITES] memory invitees, bool[MAX_INVITES] memory used)
+    {
+        InvitationSlot[MAX_INVITES] storage slots = invitationSlots[inviter];
+        for (uint256 i = 0; i < MAX_INVITES; ++i) {
+            invitees[i] = slots[i].invitee;
+            used[i] = slots[i].used;
+        }
     }
 
     function _payReferrals(address account) internal {
@@ -145,6 +188,27 @@ contract DemoAirdrop {
             emit ReferralPaid(account, referrer, REFERRAL_REWARD, level);
             referrer = invitedBy[referrer];
             level += 1;
+        }
+    }
+
+    function _findEmptySlot(address inviter) internal view returns (uint8) {
+        InvitationSlot[MAX_INVITES] storage slots = invitationSlots[inviter];
+        for (uint8 i = 0; i < MAX_INVITES; ++i) {
+            if (slots[i].invitee == address(0)) {
+                return i;
+            }
+        }
+        revert("DEMO: no invites left");
+    }
+
+    function _markInviteUsed(address inviter, address invitee) internal {
+        InvitationSlot[MAX_INVITES] storage slots = invitationSlots[inviter];
+        for (uint256 i = 0; i < MAX_INVITES; ++i) {
+            InvitationSlot storage s = slots[i];
+            if (s.invitee == invitee) {
+                s.used = true;
+                return;
+            }
         }
     }
 }

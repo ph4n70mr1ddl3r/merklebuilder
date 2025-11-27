@@ -65,12 +65,16 @@ export default function HomePage() {
   const [hasClaimed, setHasClaimed] = useState(false);
   const [invitedBy, setInvitedBy] = useState<string | null>(null);
   const [invitesCreated, setInvitesCreated] = useState<number>(0);
+  const [invitationSlots, setInvitationSlots] = useState<
+    { invitee: string | null; used: boolean }[]
+  >([]);
 
   const [proof, setProof] = useState<ProofResponse | null>(null);
   const [checkingProof, setCheckingProof] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [invitee, setInvitee] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
   const [lookup, setLookup] = useState("");
 
   const invitesRequired =
@@ -179,6 +183,14 @@ export default function HomePage() {
     setProof(null);
   };
 
+  const disconnectWallet = () => {
+    resetConnection();
+    setStatus({
+      tone: "info",
+      message: "Disconnected. Select a wallet provider and connect again.",
+    });
+  };
+
   const ensureNetwork = async (prov: BrowserProvider) => {
     const net = await prov.getNetwork();
     if (net.chainId === BigInt(CHAIN_ID)) {
@@ -222,17 +234,47 @@ export default function HomePage() {
     }
 
     try {
+      setStatus({ tone: "info", message: "Connecting wallet…" });
       const prov = new BrowserProvider(selected);
       await prov.send("eth_requestAccounts", []);
       await ensureNetwork(prov);
       const signer = await prov.getSigner();
       const address = await signer.getAddress();
+
+      const code = await prov.getCode(CONTRACT_ADDRESS);
+      if (!code || code === "0x") {
+        setAccount(address);
+        setProvider(prov);
+        setContract(null);
+        setStatus({
+          tone: "bad",
+          message: `No contract found at ${shorten(
+            CONTRACT_ADDRESS
+          )}. Check your .env settings or deployment.`,
+        });
+        return;
+      }
+
       const ctr = new Contract(CONTRACT_ADDRESS, DEMO_ABI, signer);
+      try {
+        await ctr.claimCount();
+      } catch (probeErr: any) {
+        console.error("Contract probe failed", probeErr);
+        setAccount(address);
+        setProvider(prov);
+        setContract(null);
+        setStatus({
+          tone: "bad",
+          message:
+            "Connected, but the contract at the configured address does not match the expected ABI. Check the address/chain.",
+        });
+        return;
+      }
 
       setProvider(prov);
       setContract(ctr);
       setAccount(address);
-      setStatus({ tone: "good", message: "Wallet connected." });
+      setStatus({ tone: "good", message: "Wallet connected. Fetching proof…" });
       await refreshOnChain(address, ctr);
       await refreshProof(address, ctr);
     } catch (err: any) {
@@ -250,20 +292,14 @@ export default function HomePage() {
     const liveContract = ctr ?? contract;
     if (!target || !liveContract) return;
     try {
-      const [
-        claimed,
-        inviter,
-        created,
-        count,
-        free,
-        max,
-      ] = await Promise.all([
+      const [claimed, inviter, created, count, free, max, slots] = await Promise.all([
         liveContract.hasClaimed(target),
         liveContract.invitedBy(target),
         liveContract.invitesCreated(target),
         liveContract.claimCount(),
         liveContract.FREE_CLAIMS(),
         liveContract.MAX_INVITES(),
+        liveContract.getInvitations(target),
       ]);
       setHasClaimed(Boolean(claimed));
       setInvitedBy(inviter === ZeroAddress ? null : inviter);
@@ -271,12 +307,31 @@ export default function HomePage() {
       setClaimCount(Number(count));
       setFreeClaims(Number(free));
       setMaxInvites(Number(max));
+      const invitees =
+        (slots && (slots as any).invitees ? ((slots as any).invitees as string[]) : undefined) ??
+        (Array.isArray(slots?.[0]) ? (slots[0] as string[]) : []);
+      const used =
+        (slots && (slots as any).used ? ((slots as any).used as boolean[]) : undefined) ??
+        (Array.isArray(slots?.[1]) ? (slots[1] as boolean[]) : []);
+      const parsedSlots =
+        invitees?.map((inv, idx) => ({
+          invitee: inv && inv !== ZeroAddress ? inv : null,
+          used: Boolean(used?.[idx]),
+        })) ?? [];
+      setInvitationSlots(parsedSlots);
     } catch (err: any) {
       console.error(err);
+      const callFailed =
+        err?.code === "CALL_EXCEPTION" ||
+        err?.code === "BAD_DATA" ||
+        err?.data === "0x";
       setStatus({
         tone: "bad",
-        message: err?.message || "Failed to read on-chain state.",
+        message: callFailed
+          ? "Unable to read contract state. Is the contract deployed at this address?"
+          : err?.message || "Failed to read on-chain state.",
       });
+      setContract(null);
     }
   };
 
@@ -314,15 +369,28 @@ export default function HomePage() {
       setProof(data);
 
       const liveContract = ctr ?? contract;
+      let claimed = hasClaimed;
       if (liveContract) {
-        const claimed = await liveContract.hasClaimed(target);
+        claimed = await liveContract.hasClaimed(target);
         setHasClaimed(Boolean(claimed));
       }
 
-      setStatus({
-        tone: "good",
-        message: "Proof loaded. Ready to claim if not already claimed.",
-      });
+      if (claimed) {
+        setStatus({
+          tone: "info",
+          message: "Proof found. This wallet has already claimed.",
+        });
+      } else if (invitesRequired && !invitedBy) {
+        setStatus({
+          tone: "info",
+          message: `Proof found, but an invitation is required after the first ${freeClaims} claims.`,
+        });
+      } else {
+        setStatus({
+          tone: "good",
+          message: "Proof found. You can claim now.",
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setStatus({
@@ -372,6 +440,10 @@ export default function HomePage() {
       setStatus({ tone: "bad", message: "Enter a valid Ethereum address to invite." });
       return;
     }
+    if (!hasEmptySlot) {
+      setStatus({ tone: "bad", message: "No free invitation slots left to assign." });
+      return;
+    }
     try {
       setInviting(true);
       setStatus({ tone: "info", message: "Creating invitation…" });
@@ -395,6 +467,35 @@ export default function HomePage() {
     }
   };
 
+  const revokeInvite = async (slotIndex: number) => {
+    if (!contract || !account) return;
+    const slot = invitationSlots[slotIndex];
+    if (!slot?.invitee) {
+      setStatus({ tone: "bad", message: "Slot is empty; nothing to revoke." });
+      return;
+    }
+    try {
+      setRevokingSlot(slotIndex);
+      setStatus({ tone: "info", message: "Revoking invitation…" });
+      const tx = await contract.revokeInvitation(slotIndex);
+      setStatus({
+        tone: "info",
+        message: `Tx sent: ${tx.hash.slice(0, 10)}… waiting for confirmation.`,
+      });
+      await tx.wait();
+      setStatus({ tone: "good", message: "Invitation revoked. Slot freed." });
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      setStatus({
+        tone: "bad",
+        message: err?.message || "Failed to revoke invitation.",
+      });
+    } finally {
+      setRevokingSlot(null);
+    }
+  };
+
   const proofRows = proof
     ? [
         { label: "Address", value: proof.address },
@@ -404,6 +505,13 @@ export default function HomePage() {
         { label: "Proof nodes", value: proof.proof.length.toString() },
       ]
     : [];
+
+  const normalizedSlots = useMemo(() => {
+    const base = invitationSlots.slice(0, maxInvites);
+    const missing = Math.max(0, maxInvites - base.length);
+    return [...base, ...Array.from({ length: missing }, () => ({ invitee: null, used: false }))];
+  }, [invitationSlots, maxInvites]);
+  const hasEmptySlot = normalizedSlots.some((s) => !s.invitee);
 
   return (
     <div className="relative overflow-hidden">
@@ -478,6 +586,7 @@ export default function HomePage() {
               <div className="flex gap-3">
                 <button
                   onClick={connectWallet}
+                  disabled={walletProviders.length === 0}
                   className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
                 >
                   {account ? "Reconnect" : "Connect wallet"}
@@ -488,6 +597,13 @@ export default function HomePage() {
                   className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
                 >
                   Refresh proof
+                </button>
+                <button
+                  onClick={disconnectWallet}
+                  disabled={!account}
+                  className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
+                >
+                  Disconnect
                 </button>
               </div>
             </div>
@@ -613,23 +729,81 @@ export default function HomePage() {
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-sm font-semibold text-slate-200">Create invitation</p>
-            <input
-              value={invitee}
-              onChange={(e) => setInvitee(e.target.value)}
-              placeholder="0x… invitee"
-              className="mt-3 w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-            />
-            <button
-              onClick={createInvite}
-              disabled={!account || !hasClaimed || inviting}
-              className="mt-3 w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-            >
-              {inviting ? "Creating…" : "Create invite"}
-            </button>
-            <p className="mt-2 text-xs text-slate-400">
-              Requires that you have already claimed. Each invite can be used once.
+            <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
+            <p className="mt-1 text-xs text-slate-400">
+              You have {maxInvites} fixed slots. Create uses the next open slot; revoke frees an unused one.
             </p>
+
+            <div className="mt-3 grid gap-2">
+              {normalizedSlots.map((slot, idx) => {
+                const isPending = slot.invitee && !slot.used;
+                const isUsed = slot.invitee && slot.used;
+                return (
+                  <div
+                    key={`slot-${idx}`}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-3 text-sm"
+                  >
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Slot {idx + 1}</p>
+                      <p className="font-semibold text-slate-100">
+                        {isUsed
+                          ? `Claimed by ${shorten(slot.invitee)}`
+                          : isPending
+                          ? `Reserved for ${shorten(slot.invitee)}`
+                          : "Unused"}
+                      </p>
+                      {isPending && (
+                        <p className="text-xs text-slate-400">Waiting for invitee to claim.</p>
+                      )}
+                      {isUsed && <p className="text-xs text-slate-400">Invite consumed.</p>}
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      {isPending && (
+                        <button
+                          onClick={() => revokeInvite(idx)}
+                          disabled={!account || revokingSlot === idx}
+                          className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                        >
+                          {revokingSlot === idx ? "Revoking…" : "Revoke"}
+                        </button>
+                      )}
+                      {isUsed && (
+                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                          Used
+                        </span>
+                      )}
+                      {!slot.invitee && (
+                        <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+                          Open
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <p className="text-xs text-slate-400">Enter an address to assign to the next open slot.</p>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={invitee}
+                  onChange={(e) => setInvitee(e.target.value)}
+                  placeholder="0x… invitee"
+                  className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                />
+                <button
+                  onClick={createInvite}
+                  disabled={!account || !hasClaimed || inviting || !hasEmptySlot}
+                  className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  {inviting ? "Creating…" : "Create invite"}
+                </button>
+              </div>
+              <p className="text-xs text-slate-400">
+                Requires that you have already claimed. Revoke before a claim to free a slot; claimed invites stay locked.
+              </p>
+            </div>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-4">

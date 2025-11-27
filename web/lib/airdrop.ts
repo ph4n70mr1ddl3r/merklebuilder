@@ -12,6 +12,8 @@ export const DEMO_ABI = [
   "function invitedBy(address) view returns (address)",
   "function invitesCreated(address) view returns (uint8)",
   "function createInvitation(address invitee)",
+  "function revokeInvitation(uint8 slot)",
+  "function getInvitations(address inviter) view returns (address[5] invitees, bool[5] used)",
   "function claimCount() view returns (uint256)",
   "function FREE_CLAIMS() view returns (uint256)",
   "function MAX_INVITES() view returns (uint8)",

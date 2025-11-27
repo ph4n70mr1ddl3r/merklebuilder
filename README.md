@@ -58,9 +58,10 @@ cargo run --release --bin merkle_api -- --listen 0.0.0.0:3000 --data-dir merkled
 - Leaves are `keccak256(abi.encodePacked(address))`. Branches preserve left/right order (no sorting), so proofs need sibling-direction flags.
 - Claiming mints `1 DEMO` to the claimer: `claim(bytes32[] proof, bool[] proofFlags)`, where `proofFlags[i]` is `true` when `proof[i]` is the left sibling for that step.
 - You can pre-check off-chain/on-chain with `isEligible(address, proof, proofFlags)`.
+- Invitation slots: each claimer has five fixed slots; `createInvitation(address)` fills the next open slot, `revokeInvitation(uint8 slot)` frees an unused slot (before the invitee claims), and `getInvitations(address)` returns slot state (invitee + whether the slot was consumed by a claim).
 
 ## Airdrop frontend
-- Open `frontend/index.html` directly in a browser (or serve the folder with `python -m http.server 8000`). It connects to MetaMask, fetches proofs from the REST API (e.g., `http://18.143.177.167:3000/proof/<address>`), and calls the deployed Sepolia contract at `0x786F94d1698a60eFCb26d25042395E7B2459442C`.
+- Open `frontend/index.html` directly in a browser (or serve the folder with `python -m http.server 8000`). It connects to MetaMask, fetches proofs from the REST API (e.g., `http://18.143.177.167:3000/proof/<address>`), and calls the deployed Sepolia contract at `0xF2242f1f3A89b87DF24dC958EC403E39EC55bE7B`.
 - You can hit the lookup field to inspect any address; claiming requires the connected wallet to match the proof address. The API now sends permissive CORS headers so the static page can fetch it from any origin.
 
 ## Notes
