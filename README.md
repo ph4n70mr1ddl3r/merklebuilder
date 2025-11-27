@@ -54,7 +54,7 @@ cargo run --release --bin merkle_api -- --listen 0.0.0.0:3000 --data-dir merkled
 
 ## Smart contract (Demo Airdrop)
 - Contract: `contracts/DemoAirdrop.sol` (ERC20 + Merkle airdrop, name: Demo Airdrop, symbol: DEMO).
-- Merkle root (from `merkledb/layer26.bin`): `0x8bfe0b0736a43e4820cdb91c9222611b6fe7c3ccfd06bf899280c55a18a8f81d`.
+- Merkle root (from `merkledb/layer26.bin`): `0x1361d28feffb65b743ef4da53ffc43a8695f103a14aceff0de7ed6178ace5197`.
 - Leaves are `keccak256(abi.encodePacked(address))`. Branches preserve left/right order (no sorting), so proofs need sibling-direction flags.
 - Claiming mints `1 DEMO` to the claimer: `claim(bytes32[] proof, bool[] proofFlags)`, where `proofFlags[i]` is `true` when `proof[i]` is the left sibling for that step.
 - You can pre-check off-chain/on-chain with `isEligible(address, proof, proofFlags)`.
@@ -66,3 +66,16 @@ cargo run --release --bin merkle_api -- --listen 0.0.0.0:3000 --data-dir merkled
 ## Notes
 - The default output directory for Merkle data is `merkledb/` (git-ignored).
 - For large inputs, prefer `--release` to keep progress bars responsive.
+
+## Next.js + Tailwind frontend (new)
+A Next.js/Tailwind app lives under `web/` with wallet connect, proof lookup from the REST API, invite creation, and claim submission.
+
+### Run locally
+```bash
+cd web
+cp .env.example .env.local # adjust API/contract addresses if needed
+npm install
+npm run dev
+```
+- Defaults to Sepolia: contract `0x786F94d1698a60eFCb26d25042395E7B2459442C` and proof API `http://18.143.177.167:3000`.
+- After claiming you can mint up to five invitations; claims after the first 100 require an invite plus a valid Merkle proof.

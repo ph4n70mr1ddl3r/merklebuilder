@@ -3,3 +3,6 @@
 big.txt
 accounts.txt
 final.txt
+web/.next
+web/node_modules
+web/.turbo

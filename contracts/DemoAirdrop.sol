@@ -17,15 +17,25 @@ contract DemoAirdrop {
 
     // Merkle root over the address set produced by `txt_to_bin` (see merkledb folder).
     bytes32 public constant MERKLE_ROOT =
-        0x8bfe0b0736a43e4820cdb91c9222611b6fe7c3ccfd06bf899280c55a18a8f81d;
+        0x1361d28feffb65b743ef4da53ffc43a8695f103a14aceff0de7ed6178ace5197;
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
     mapping(address => bool) public hasClaimed;
+    mapping(address => address) public invitedBy; // inviter address (zero if none)
+    mapping(address => uint8) public invitesCreated; // invitations created by an address
+
+    uint256 public claimCount;
+
+    uint256 public constant FREE_CLAIMS = 100;
+    uint8 public constant MAX_INVITES = 5;
+    uint256 public constant REFERRAL_REWARD = 1 ether; // 1 DEMO per referral level
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Claimed(address indexed account, uint256 amount);
+    event InvitationCreated(address indexed inviter, address indexed invitee);
+    event ReferralPaid(address indexed invitee, address indexed referrer, uint256 amount, uint256 level);
 
     // --- ERC20 ---
     function transfer(address to, uint256 value) external returns (bool) {
@@ -79,9 +89,14 @@ contract DemoAirdrop {
 
         bytes32 leaf = keccak256(abi.encodePacked(account));
         require(_verify(leaf, proof, proofFlags), "DEMO: invalid proof");
+        if (claimCount >= FREE_CLAIMS) {
+            require(invitedBy[account] != address(0), "DEMO: invitation required");
+        }
 
         hasClaimed[account] = true;
+        claimCount += 1;
         _mint(account, CLAIM_AMOUNT);
+        _payReferrals(account);
         emit Claimed(account, CLAIM_AMOUNT);
     }
 
@@ -107,5 +122,29 @@ contract DemoAirdrop {
                 : keccak256(abi.encodePacked(computed, proof[i])); // sibling on the right
         }
         return computed == MERKLE_ROOT;
+    }
+
+    /// @notice Create an invitation for another address (max 5 per claimer).
+    function createInvitation(address invitee) external {
+        require(hasClaimed[msg.sender], "DEMO: claim before inviting");
+        require(invitee != address(0) && invitee != msg.sender, "DEMO: invalid invitee");
+        require(invitesCreated[msg.sender] < MAX_INVITES, "DEMO: no invites left");
+        require(invitedBy[invitee] == address(0), "DEMO: already invited");
+        require(!hasClaimed[invitee], "DEMO: invitee already claimed");
+
+        invitesCreated[msg.sender] += 1;
+        invitedBy[invitee] = msg.sender;
+        emit InvitationCreated(msg.sender, invitee);
+    }
+
+    function _payReferrals(address account) internal {
+        address referrer = invitedBy[account];
+        uint256 level = 1;
+        while (referrer != address(0) && level <= 5) {
+            _mint(referrer, REFERRAL_REWARD);
+            emit ReferralPaid(account, referrer, REFERRAL_REWARD, level);
+            referrer = invitedBy[referrer];
+            level += 1;
+        }
     }
 }

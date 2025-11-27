@@ -1,0 +1,666 @@
+'use client';
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import clsx from "clsx";
+import {
+  BrowserProvider,
+  Contract,
+  ZeroAddress,
+  getAddress,
+  isAddress,
+} from "ethers";
+import {
+  API_BASE,
+  CHAIN_ID,
+  CHAIN_NAME,
+  CONTRACT_ADDRESS,
+  DEMO_ABI,
+  ProofResponse,
+} from "../lib/airdrop";
+
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
+type Tone = "info" | "good" | "bad";
+type ProviderSource = "eip6963" | "injected";
+
+type ProviderOption = {
+  id: string;
+  name: string;
+  rdns?: string;
+  icon?: string;
+  provider: any;
+  source: ProviderSource;
+};
+
+type Eip6963ProviderDetail = {
+  info: { uuid: string; name: string; icon: string; rdns: string };
+  provider: any;
+};
+
+const shorten = (addr?: string | null) =>
+  addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
+
+const hexChainId = `0x${CHAIN_ID.toString(16)}`;
+
+export default function HomePage() {
+  const [status, setStatus] = useState<{ tone: Tone; message: string }>({
+    tone: "info",
+    message: "Connect your wallet to begin.",
+  });
+  const [walletProviders, setWalletProviders] = useState<ProviderOption[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const [account, setAccount] = useState<string | null>(null);
+  const [provider, setProvider] = useState<BrowserProvider | null>(null);
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [networkLabel, setNetworkLabel] = useState("Not connected");
+
+  const [claimCount, setClaimCount] = useState<number | null>(null);
+  const [freeClaims, setFreeClaims] = useState<number>(100);
+  const [maxInvites, setMaxInvites] = useState<number>(5);
+  const [hasClaimed, setHasClaimed] = useState(false);
+  const [invitedBy, setInvitedBy] = useState<string | null>(null);
+  const [invitesCreated, setInvitesCreated] = useState<number>(0);
+
+  const [proof, setProof] = useState<ProofResponse | null>(null);
+  const [checkingProof, setCheckingProof] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [invitee, setInvitee] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [lookup, setLookup] = useState("");
+
+  const invitesRequired =
+    claimCount !== null ? claimCount >= freeClaims : false;
+  const canClaim =
+    !!proof &&
+    !hasClaimed &&
+    (!invitesRequired || invitedBy !== null) &&
+    !!contract &&
+    !claiming;
+
+  const statusToneClasses = useMemo(
+    () => ({
+      info: "border-slate-600/60 bg-slate-800/40 text-slate-200",
+      good: "border-emerald-500/50 bg-emerald-500/10 text-emerald-100",
+      bad: "border-red-500/50 bg-red-500/10 text-red-100",
+    }),
+    []
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = new Set<string>();
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<Eip6963ProviderDetail>).detail;
+      if (!detail?.info?.uuid || seen.has(detail.info.uuid)) return;
+      seen.add(detail.info.uuid);
+      setWalletProviders((prev) => {
+        if (prev.some((p) => p.id === detail.info.uuid)) return prev;
+        return [
+          ...prev,
+          {
+            id: detail.info.uuid,
+            name: detail.info.name,
+            rdns: detail.info.rdns,
+            icon: detail.info.icon,
+            provider: detail.provider,
+            source: "eip6963",
+          },
+        ];
+      });
+      setSelectedProviderId((prev) => prev ?? detail.info.uuid);
+    };
+
+    window.addEventListener("eip6963:announceProvider", handler as EventListener);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+
+    const injected = (window as any).ethereum;
+    if (injected) {
+      setWalletProviders((prev) => {
+        if (prev.some((p) => p.id === "injected")) return prev;
+        return [
+          ...prev,
+          {
+            id: "injected",
+            name: "Injected (window.ethereum)",
+            provider: injected,
+            source: "injected",
+          },
+        ];
+      });
+      setSelectedProviderId((prev) => prev ?? "injected");
+    }
+
+    return () => {
+      window.removeEventListener("eip6963:announceProvider", handler as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    const current =
+      walletProviders.find((p) => p.id === selectedProviderId)?.provider ??
+      walletProviders[0]?.provider;
+    if (!current?.on) return;
+    const handler = (accounts: string[]) => {
+      if (!accounts || accounts.length === 0) {
+        resetConnection();
+        setStatus({ tone: "bad", message: "Wallet disconnected." });
+      } else {
+        setAccount(accounts[0]);
+        refreshOnChain(accounts[0]);
+        refreshProof(accounts[0]);
+      }
+    };
+    const chainHandler = () => window.location.reload();
+    current.on("accountsChanged", handler);
+    current.on("chainChanged", chainHandler);
+    return () => {
+      if (current?.removeListener) {
+        current.removeListener("accountsChanged", handler);
+        current.removeListener("chainChanged", chainHandler);
+      } else if (current?.off) {
+        current.off("accountsChanged", handler);
+        current.off("chainChanged", chainHandler);
+      }
+    };
+  }, [walletProviders, selectedProviderId]);
+
+  const resetConnection = () => {
+    setAccount(null);
+    setProvider(null);
+    setContract(null);
+    setHasClaimed(false);
+    setInvitedBy(null);
+    setInvitesCreated(0);
+    setProof(null);
+  };
+
+  const ensureNetwork = async (prov: BrowserProvider) => {
+    const net = await prov.getNetwork();
+    if (net.chainId === BigInt(CHAIN_ID)) {
+      setNetworkLabel(`${CHAIN_NAME} (${net.chainId.toString()})`);
+      return;
+    }
+
+    try {
+      await prov.send("wallet_switchEthereumChain", [{ chainId: hexChainId }]);
+    } catch (switchErr: any) {
+      if (switchErr?.code === 4902) {
+        await prov.send("wallet_addEthereumChain", [
+          {
+            chainId: hexChainId,
+            chainName: CHAIN_NAME,
+            nativeCurrency: { name: "Ethereum", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://rpc.sepolia.org"],
+            blockExplorerUrls: ["https://sepolia.etherscan.io"],
+          },
+        ]);
+      } else {
+        throw switchErr;
+      }
+    }
+
+    const finalNet = await prov.getNetwork();
+    setNetworkLabel(`${CHAIN_NAME} (${finalNet.chainId.toString()})`);
+  };
+
+  const connectWallet = async () => {
+    const selected =
+      walletProviders.find((p) => p.id === selectedProviderId)?.provider ??
+      walletProviders[0]?.provider;
+
+    if (!selected) {
+      setStatus({
+        tone: "bad",
+        message: "No wallet provider found. Open a wallet that supports EIP-6963.",
+      });
+      return;
+    }
+
+    try {
+      const prov = new BrowserProvider(selected);
+      await prov.send("eth_requestAccounts", []);
+      await ensureNetwork(prov);
+      const signer = await prov.getSigner();
+      const address = await signer.getAddress();
+      const ctr = new Contract(CONTRACT_ADDRESS, DEMO_ABI, signer);
+
+      setProvider(prov);
+      setContract(ctr);
+      setAccount(address);
+      setStatus({ tone: "good", message: "Wallet connected." });
+      await refreshOnChain(address, ctr);
+      await refreshProof(address, ctr);
+    } catch (err: any) {
+      console.error(err);
+      setStatus({
+        tone: "bad",
+        message: err?.message || "Unable to connect wallet.",
+      });
+    }
+  };
+
+  const refreshOnChain = async (addr?: string, ctr?: Contract | null) => {
+    if (!addr && !account) return;
+    const target = addr ?? account;
+    const liveContract = ctr ?? contract;
+    if (!target || !liveContract) return;
+    try {
+      const [
+        claimed,
+        inviter,
+        created,
+        count,
+        free,
+        max,
+      ] = await Promise.all([
+        liveContract.hasClaimed(target),
+        liveContract.invitedBy(target),
+        liveContract.invitesCreated(target),
+        liveContract.claimCount(),
+        liveContract.FREE_CLAIMS(),
+        liveContract.MAX_INVITES(),
+      ]);
+      setHasClaimed(Boolean(claimed));
+      setInvitedBy(inviter === ZeroAddress ? null : inviter);
+      setInvitesCreated(Number(created));
+      setClaimCount(Number(count));
+      setFreeClaims(Number(free));
+      setMaxInvites(Number(max));
+    } catch (err: any) {
+      console.error(err);
+      setStatus({
+        tone: "bad",
+        message: err?.message || "Failed to read on-chain state.",
+      });
+    }
+  };
+
+  const refreshProof = async (addressOverride?: string, ctr?: Contract | null) => {
+    const target = addressOverride || account;
+    if (!target) {
+      setStatus({ tone: "info", message: "Connect your wallet to fetch proof." });
+      return;
+    }
+    setCheckingProof(true);
+    setProof(null);
+    try {
+      const res = await fetch(`${API_BASE}/proof/${target}`);
+      if (!res.ok) {
+        const text = await res.text();
+        setStatus({
+          tone: "bad",
+          message: `Not in airdrop list (${text || res.status}).`,
+        });
+        setProof(null);
+        return;
+      }
+      const data: ProofResponse = await res.json();
+      const normalizedTarget = getAddress(target);
+      const proofAddress = getAddress(data.address);
+      if (normalizedTarget !== proofAddress) {
+        setStatus({
+          tone: "bad",
+          message: `Proof is for ${shorten(proofAddress)}. Connect that wallet to claim.`,
+        });
+        setProof(null);
+        return;
+      }
+
+      setProof(data);
+
+      const liveContract = ctr ?? contract;
+      if (liveContract) {
+        const claimed = await liveContract.hasClaimed(target);
+        setHasClaimed(Boolean(claimed));
+      }
+
+      setStatus({
+        tone: "good",
+        message: "Proof loaded. Ready to claim if not already claimed.",
+      });
+    } catch (err: any) {
+      console.error(err);
+      setStatus({
+        tone: "bad",
+        message: err?.message || "Failed to fetch proof.",
+      });
+    } finally {
+      setCheckingProof(false);
+    }
+  };
+
+  const claim = async () => {
+    if (!contract || !proof || !account) return;
+    if (invitesRequired && !invitedBy) {
+      setStatus({ tone: "bad", message: "An invitation is required after the first 100 claims." });
+      return;
+    }
+    try {
+      setClaiming(true);
+      setStatus({ tone: "info", message: "Submitting claim transaction…" });
+      const tx = await contract.claim(
+        proof.proof.map((p) => p.hash),
+        proof.proof_flags
+      );
+      setStatus({
+        tone: "info",
+        message: `Tx sent: ${tx.hash.slice(0, 10)}… waiting for confirmation.`,
+      });
+      await tx.wait();
+      setStatus({ tone: "good", message: "Claim confirmed! DEMO minted." });
+      setHasClaimed(true);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      setStatus({
+        tone: "bad",
+        message: err?.message || "Claim failed.",
+      });
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  const createInvite = async () => {
+    if (!contract || !account) return;
+    if (!isAddress(invitee)) {
+      setStatus({ tone: "bad", message: "Enter a valid Ethereum address to invite." });
+      return;
+    }
+    try {
+      setInviting(true);
+      setStatus({ tone: "info", message: "Creating invitation…" });
+      const tx = await contract.createInvitation(invitee);
+      setStatus({
+        tone: "info",
+        message: `Tx sent: ${tx.hash.slice(0, 10)}… waiting for confirmation.`,
+      });
+      await tx.wait();
+      setStatus({ tone: "good", message: "Invitation created." });
+      setInvitee("");
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      setStatus({
+        tone: "bad",
+        message: err?.message || "Failed to create invitation.",
+      });
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const proofRows = proof
+    ? [
+        { label: "Address", value: proof.address },
+        { label: "Index", value: `${proof.index + 1} of ${proof.total}` },
+        { label: "Leaf", value: proof.leaf },
+        { label: "Root", value: proof.root },
+        { label: "Proof nodes", value: proof.proof.length.toString() },
+      ]
+    : [];
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500 blur-[120px] opacity-30" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-emerald-500 blur-[120px] opacity-25" />
+
+      <header className="relative mx-auto max-w-5xl px-6 pt-14 text-center">
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.8)]" />
+          DEMO Merkle Airdrop · {CHAIN_NAME}
+        </div>
+        <h1 className="mt-6 text-4xl font-semibold tracking-tight md:text-5xl">
+          Claim your DEMO with proof and invites
+        </h1>
+        <p className="mt-3 text-lg text-slate-300 md:text-xl">
+          Fetch your Merkle proof from the REST API, submit a claim on-chain, and
+          share up to five invitations once you&apos;ve claimed.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-300">
+          <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+            Contract:{" "}
+            <Link
+              href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
+              target="_blank"
+              className="text-emerald-300 hover:underline"
+            >
+              {shorten(CONTRACT_ADDRESS)}
+            </Link>
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+            Proof API: <span className="font-mono text-emerald-300">{API_BASE}</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="relative mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-14 pt-8 md:flex-row">
+        <div className="glass w-full p-6 md:w-2/3">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-wide text-slate-400">
+                  Wallet
+                </p>
+                <p className="text-lg font-semibold">
+                  {account ? shorten(account) : "Not connected"}
+                </p>
+                <p className="text-sm text-slate-400">{networkLabel}</p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <p className="text-xs uppercase tracking-wide text-slate-400">
+                  Provider
+                </p>
+                {walletProviders.length > 0 ? (
+                  <select
+                    value={selectedProviderId ?? walletProviders[0]?.id ?? ""}
+                    onChange={(e) => setSelectedProviderId(e.target.value)}
+                    className="min-w-56 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+                  >
+                    {walletProviders.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.source === "eip6963" && p.rdns ? ` · ${p.rdns}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    Waiting for wallets (EIP-6963 broadcast).
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={connectWallet}
+                  className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
+                >
+                  {account ? "Reconnect" : "Connect wallet"}
+                </button>
+                <button
+                  onClick={() => refreshProof()}
+                  disabled={!account}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
+                >
+                  Refresh proof
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={clsx(
+                "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                statusToneClasses[status.tone]
+              )}
+            >
+              <span
+                className={clsx(
+                  "mt-1 h-2.5 w-2.5 rounded-full",
+                  status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
+                  status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
+                  status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
+                )}
+              />
+              <span className="leading-relaxed">{status.message}</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Stat label="Claimed" value={hasClaimed ? "Yes" : "No"} />
+              <Stat
+                label="Claim count"
+                value={claimCount !== null ? claimCount.toString() : "—"}
+              />
+              <Stat label="Free claims" value={freeClaims.toString()} />
+              <Stat
+                label="Invitation"
+                value={
+                  invitesRequired
+                    ? invitedBy
+                      ? `Invited by ${shorten(invitedBy)}`
+                      : "Required"
+                    : "Not required"
+                }
+              />
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-200">
+                    Fetch proof
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Uses the Merkle proof API; defaults to your connected address.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    value={lookup}
+                    onChange={(e) => setLookup(e.target.value)}
+                    placeholder={account ?? "0x..."}
+                    className="w-60 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                  />
+                  <button
+                    onClick={() =>
+                      refreshProof(lookup.trim() || account || undefined)
+                    }
+                    disabled={!account}
+                    className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                  >
+                    Lookup
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {proof ? (
+                  proofRows.map((row) => (
+                    <div
+                      key={row.label}
+                      className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2 text-sm"
+                    >
+                      <span className="text-slate-400">{row.label}</span>
+                      <span className="font-mono text-emerald-200">
+                        {row.value}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    No proof loaded yet.
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={claim}
+                  disabled={!canClaim}
+                  className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  {claiming ? "Claiming…" : "Claim 100 DEMO"}
+                </button>
+                <p className="text-xs text-slate-400">
+                  Proof is always required. Invitations apply after the first {freeClaims} claims.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass w-full space-y-6 p-6 md:w-1/3">
+          <div>
+            <p className="text-sm uppercase tracking-wide text-slate-400">
+              Invitations
+            </p>
+            <h3 className="text-xl font-semibold">Share access after you claim</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Once you have claimed, you can create up to {maxInvites} invitations. Each invite enables one new claim when invites are required.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-sm font-semibold text-slate-200">Your status</p>
+            <div className="mt-3 grid gap-2 text-sm">
+              <InfoRow label="Invited by" value={invitedBy ? shorten(invitedBy) : "No inviter"} />
+              <InfoRow label="Invites created" value={`${invitesCreated} / ${maxInvites}`} />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-sm font-semibold text-slate-200">Create invitation</p>
+            <input
+              value={invitee}
+              onChange={(e) => setInvitee(e.target.value)}
+              placeholder="0x… invitee"
+              className="mt-3 w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+            />
+            <button
+              onClick={createInvite}
+              disabled={!account || !hasClaimed || inviting}
+              className="mt-3 w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              {inviting ? "Creating…" : "Create invite"}
+            </button>
+            <p className="mt-2 text-xs text-slate-400">
+              Requires that you have already claimed. Each invite can be used once.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-sm font-semibold text-slate-200">How it works</p>
+            <ol className="mt-3 space-y-2 text-sm text-slate-300">
+              <li>1. Connect wallet on {CHAIN_NAME}.</li>
+              <li>2. Fetch your Merkle proof from the API.</li>
+              <li>3. Claim on-chain (proof required). After {freeClaims} claims, an invitation is also required.</li>
+              <li>4. After claiming, share up to {maxInvites} invites and earn referral rewards automatically.</li>
+            </ol>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/5 px-3 py-3">
+      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-lg font-semibold text-slate-50">{value}</p>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
+      <span className="text-slate-400">{label}</span>
+      <span className="font-semibold text-slate-100">{value}</span>
+    </div>
+  );
+}
