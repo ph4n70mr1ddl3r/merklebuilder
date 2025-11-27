@@ -584,6 +584,31 @@ export default function HomePage() {
     return null;
   }, [account, contract, hasClaimed, invitesRequired, invitedBy, proof]);
 
+  const nextStep = useMemo(() => {
+    if (!account) return "Connect your wallet to get started.";
+    if (checkingProof) return "Checking your eligibility…";
+    if (claiming) return "Sending your claim transaction…";
+    if (inviting) return "Creating an invitation…";
+    if (hasClaimed && invitesOpen) return "You’ve claimed. You can now create invitations.";
+    if (hasClaimed && !invitesOpen) return "You’ve claimed. Wait for the invite phase to start.";
+    if (!hasClaimed && !proof) return "Check status to see if you can claim.";
+    if (!hasClaimed && proof && invitesRequired && !invitedBy)
+      return "You’re on the list, but still need an invitation.";
+    if (!hasClaimed && proof && (!invitesRequired || invitedBy))
+      return "You’re eligible. You can send your claim.";
+    return "Status ready.";
+  }, [
+    account,
+    checkingProof,
+    claiming,
+    inviting,
+    hasClaimed,
+    invitesOpen,
+    proof,
+    invitesRequired,
+    invitedBy,
+  ]);
+
   const copyToClipboard = async (value: string, key: string) => {
     if (!value) return;
     try {
@@ -737,7 +762,7 @@ export default function HomePage() {
                       disabled={!account}
                       className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-40"
                     >
-                      Refresh proof
+                      Check status
                     </button>
                     <button
                       onClick={disconnectWallet}
@@ -749,21 +774,33 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div
-                  className={clsx(
-                    "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
-                    statusToneClasses[status.tone]
-                  )}
-                >
-                  <span
+                <div className="flex flex-col gap-2">
+                  <div
                     className={clsx(
-                      "mt-1 h-2.5 w-2.5 rounded-full",
-                      status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
-                      status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
-                      status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
+                      "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                      statusToneClasses[status.tone]
                     )}
-                  />
-                  <span className="leading-relaxed">{status.message}</span>
+                  >
+                    <span
+                      className={clsx(
+                        "mt-1 h-2.5 w-2.5 rounded-full",
+                        status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
+                        status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
+                        status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
+                      )}
+                    />
+                    <span className="leading-relaxed">{status.message}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-xs text-slate-200">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
+                      →
+                    </span>
+                    <span className="font-medium">Next step:</span>
+                    <span className="text-slate-100">{nextStep}</span>
+                    {(checkingProof || claiming || inviting) && (
+                      <span className="ml-2 h-3 w-3 animate-spin rounded-full border border-emerald-400 border-t-transparent" />
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">
@@ -800,7 +837,7 @@ export default function HomePage() {
                         disabled={!account || checkingProof}
                         className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
                       >
-                        {checkingProof ? "Checking…" : "Refresh status"}
+                        {checkingProof ? "Checking…" : "Check status"}
                       </button>
                     </div>
                   </div>
@@ -818,10 +855,10 @@ export default function HomePage() {
                   onClick={claim}
                   disabled={!canClaim}
                   className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-                    >
-                      {claiming ? "Claiming…" : "Claim 100 DEMO"}
-                    </button>
-                    {claimDisabledReason && (
+                >
+                  {claiming ? "Sending…" : "Send claim"}
+                </button>
+                {claimDisabledReason && (
                   <p className="text-xs text-amber-200">{claimDisabledReason}</p>
                 )}
                 <div className="mt-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-300">
@@ -835,7 +872,7 @@ export default function HomePage() {
                     className="w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
                   />
                   <p className="text-xs text-slate-500">
-                    Default is your connected wallet. You can redirect the claim to another address.
+                    Default is your connected wallet. You can redirect the 100 DEMO to another address.
                   </p>
                 </div>
               </div>
@@ -850,11 +887,11 @@ export default function HomePage() {
             </p>
             <h3 className="text-xl font-semibold">Share access after you claim</h3>
             <p className="mt-2 text-sm text-slate-400">
-              Once you have claimed, you can create up to {maxInvites} invitations. Invitations open when the invite phase starts.
+              Once you have claimed, you can create up to {maxInvites} invitations. The invite phase controls when invites are available.
             </p>
             {!invitesOpen && (
               <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                Early-claim phase active. Invites unlock soon.
+                Invite phase has not started yet.
               </p>
             )}
           </div>
@@ -892,11 +929,20 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  You have {maxInvites} fixed slots. Create uses the next open slot; revoke frees an unused one.
-                </p>
+	              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+	                <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
+	                <p className="mt-1 text-xs text-slate-400">
+	                  You have {maxInvites} fixed slots. Create uses the next open slot; revoke frees an unused one.
+	                </p>
+	                <p className="mt-2 text-xs text-slate-300">
+	                  Summary:{" "}
+	                  {normalizedSlots.filter((s) => s.invitee && s.used).length} used ·{" "}
+	                  {normalizedSlots.filter((s) => s.invitee && !s.used).length} reserved ·{" "}
+	                  {maxInvites -
+	                    normalizedSlots.filter((s) => s.invitee && s.used).length -
+	                    normalizedSlots.filter((s) => s.invitee && !s.used).length}{" "}
+	                  open
+	                </p>
 
                 <div className="mt-3 grid gap-2">
                   {normalizedSlots.map((slot, idx) => {
@@ -981,21 +1027,11 @@ export default function HomePage() {
                 </div>
               </div>
             </>
-          )}
-
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-sm font-semibold text-slate-200">How it works</p>
-            <ol className="mt-3 space-y-2 text-sm text-slate-300">
-              <li>1. Connect wallet on {CHAIN_NAME}.</li>
-              <li>2. Fetch your Merkle proof from the API.</li>
-              <li>3. Claim on-chain (proof required while claimable).</li>
-              <li>4. After claiming, share up to {maxInvites} invites and earn referral rewards automatically.</li>
-            </ol>
-          </div>
-          </div>
-          </>
-        )}
-      </main>
+	          )}
+	          </div>
+	          </>
+	        )}
+	      </main>
       <ProviderModal
         open={showProviderModal}
         onClose={() => setShowProviderModal(false)}
