@@ -14,6 +14,9 @@ import { MarketPanel } from "./components/MarketPanel";
 import { AirdropPanel } from "./components/AirdropPanel";
 import { InvitesPanel } from "./components/InvitesPanel";
 import { ProviderModal } from "./components/ProviderModal";
+import { PersonaSelector, UserIntent } from "./components/PersonaSelector";
+import { SimplifiedClaimPanel } from "./components/SimplifiedClaimPanel";
+import { SimplifiedBuyPanel } from "./components/SimplifiedBuyPanel";
 import { formatToken, shorten } from "../lib/format";
 import { addressSchema, amountSchema } from "../lib/validators";
 
@@ -84,6 +87,8 @@ export default function HomePage() {
   const [trading, setTrading] = useState(false);
   const [donateAmount, setDonateAmount] = useState("");
   const [donating, setDonating] = useState(false);
+  const [userIntent, setUserIntent] = useState<UserIntent | null>(null);
+  const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
@@ -229,13 +234,15 @@ export default function HomePage() {
       }
       setCheckingProof(true);
       setProof(null);
+      setHasCheckedEligibility(false);
       try {
         const res = await fetch(`${API_BASE}/proof/${target}`);
         if (!res.ok) {
           const text = await res.text();
-          toast.error(`Not in airdrop list (${text || res.status})`);
+          toast.error(`Not eligible for airdrop`);
           setStatus({ tone: "bad", message: `Not in airdrop list (${text || res.status}).` });
           setProof(null);
+          setHasCheckedEligibility(true);
           return;
         }
         const data: ProofResponse = await res.json();
@@ -248,10 +255,12 @@ export default function HomePage() {
             message: `Proof is for ${shorten(proofAddress)}. Connect that wallet to claim.`,
           });
           setProof(null);
+          setHasCheckedEligibility(true);
           return;
         }
 
         setProof(data);
+        setHasCheckedEligibility(true);
 
         let claimed = hasClaimed;
         let inviterAddr: string | null = invitedBy;
@@ -280,19 +289,19 @@ export default function HomePage() {
         }
 
         if (claimed) {
-          toast.info("Proof found. This wallet has already claimed.");
+          toast.success("You've already claimed your tokens!");
           setStatus({
-            tone: "info",
+            tone: "good",
             message: "Proof found. This wallet has already claimed.",
           });
         } else if (invitesRequired && !inviterAddr) {
-          toast.warning("You are qualified, but you need an invitation to claim right now.");
+          toast.warning("You're eligible but need an invitation to claim.");
           setStatus({
             tone: "info",
             message: "You are qualified, but you need an invitation to claim right now.",
           });
         } else {
-          toast.success("Proof found. You can claim now.");
+          toast.success("🎉 You're eligible! You can claim now.");
           setStatus({
             tone: "good",
             message: "Proof found. You can claim now.",
@@ -305,6 +314,7 @@ export default function HomePage() {
           tone: "bad",
           message: err?.message || "Failed to fetch proof.",
         });
+        setHasCheckedEligibility(true);
       } finally {
         setCheckingProof(false);
       }
@@ -1012,192 +1022,132 @@ export default function HomePage() {
         chainName={CHAIN_NAME}
         contractAddress={CONTRACT_ADDRESS}
         apiBase={API_BASE}
-        onPrimary={() => switchTab("airdrop")}
-        onSecondary={() => switchTab("market")}
+        onPrimary={() => setUserIntent('claim')}
+        onSecondary={() => setUserIntent('buy')}
         stats={heroStats}
       />
 
-      <section className="mx-auto max-w-6xl px-3 pt-4 md:px-4">
-        <div className="glass w-full p-4 md:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm uppercase tracking-wide text-slate-400">Experience map</p>
-              <h3 className="text-lg font-semibold text-slate-50">Pick your lane and dive in</h3>
-            </div>
-            <button
-              onClick={() => setShowHow((v) => !v)}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-slate-100 hover:-translate-y-0.5"
-            >
-              {showHow ? "Hide flow" : "Show flow"}
-            </button>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {[
-              {
-                title: "Merkle airdrop",
-                body: "Prove eligibility, pick a recipient, and mint your 100 DEMO.",
-                accent: "from-emerald-400/30 to-emerald-500/20",
-                target: "airdrop",
-                cta: "Claim flow",
-              },
-              {
-                title: "Referral invites",
-                body: "After claiming, reserve up to five invite slots and share them.",
-                accent: "from-cyan-400/30 to-blue-500/10",
-                target: "invites",
-                cta: "Manage invites",
-              },
-              {
-                title: "Market maker",
-                body: "Seed the pool, set slippage, and swap ETH ↔ DEMO against reserves.",
-                accent: "from-white/15 to-slate-700/40",
-                target: "market",
-                cta: "Trade panel",
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className={`rounded-2xl border border-white/10 bg-gradient-to-br ${card.accent} p-4 shadow-lg shadow-emerald-500/10`}
-              >
-                <p className="text-sm font-semibold text-slate-50">{card.title}</p>
-                <p className="mt-1 text-sm text-slate-300">{card.body}</p>
-                <div className={`mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r ${card.accent} px-3 py-1 text-xs font-semibold text-slate-900`}>
-                  <span className="text-slate-900">•</span>
-                  <span>{card.cta}</span>
-                </div>
-                <button
-                  onClick={() => switchTab(card.target as "airdrop" | "invites" | "market")}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5"
-                >
-                  Jump in →
-                </button>
-              </div>
-            ))}
-          </div>
-          {showHow && (
-            <ol className="mt-4 grid gap-2 text-sm text-slate-300 md:grid-cols-4">
-              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                1. Connect wallet on {CHAIN_NAME}.
-              </li>
-              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                2. Fetch your proof and confirm eligibility.
-              </li>
-              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                3. Claim (and optionally redirect) your DEMO, unlocking invites.
-              </li>
-              <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                4. Seed liquidity or swap with slippage protection.
-              </li>
-            </ol>
-          )}
-        </div>
-      </section>
+      {/* Persona Selector - shown when no intent selected */}
+      {!userIntent && (
+        <PersonaSelector
+          onSelectIntent={setUserIntent}
+          currentIntent={userIntent || 'claim'}
+          hasClaimed={hasClaimed}
+          isEligible={proof !== null}
+          hasChecked={hasCheckedEligibility}
+        />
+      )}
 
-      <TabNav
-        activeTab={activeTab}
-        onChange={(tab) => switchTab(tab)}
-        claimCount={claimCount}
-        freeClaims={freeClaims}
-        freeClaimsRemaining={freeClaimsRemaining}
-        invitesCreated={invitesCreated}
-        maxInvites={maxInvites}
-        poolFunded={poolFunded}
-        poolHasDemo={poolHasDemo}
-        priceEthPerDemo={priceEthPerDemo}
-        reserveEth={reserveEth}
-        reserveDemo={reserveDemo}
-        hasClaimed={hasClaimed}
-      />
+      {/* Simplified Claim Flow */}
+      {userIntent === 'claim' && (
+        <SimplifiedClaimPanel
+          account={account}
+          isEligible={proof !== null}
+          hasChecked={hasCheckedEligibility}
+          hasClaimed={hasClaimed}
+          checking={checkingProof}
+          claiming={claiming}
+          proof={proof}
+          invitedBy={invitedBy}
+          invitesRequired={invitesRequired}
+          poolFunded={poolFunded}
+          onCheckEligibility={() => refreshProof()}
+          onClaim={claim}
+          onSwitchToInvite={() => setUserIntent('manage')}
+          setShowProviderModal={setShowProviderModal}
+        />
+      )}
 
-      {activeTab === "market" && (
-        <MarketPanel
+      {/* Simplified Buy Flow */}
+      {userIntent === 'buy' && (
+        <SimplifiedBuyPanel
+          account={account}
           contractAddress={CONTRACT_ADDRESS}
           reserveEth={reserveEth}
           reserveDemo={reserveDemo}
           priceEthPerDemo={priceEthPerDemo}
           priceDemoPerEth={priceDemoPerEth}
           poolFunded={poolFunded}
-          poolHasDemo={poolHasDemo}
           buyQuote={buyQuote}
-          sellQuote={sellQuote}
-          buyMinOut={buyMinOut}
-          sellMinOut={sellMinOut}
           buyEthAmount={buyEthAmount}
           setBuyEthAmount={setBuyEthAmount}
-          sellDemoAmount={sellDemoAmount}
-          setSellDemoAmount={setSellDemoAmount}
-          donateAmount={donateAmount}
-          setDonateAmount={setDonateAmount}
           slippage={slippage}
           setSlippage={setSlippage}
-          slippageBps={slippageBps}
-          handleDonate={handleDonate}
           handleBuy={handleBuy}
-          handleSell={handleSell}
-          donateDisabledReason={donateDisabledReason}
           buyDisabledReason={buyDisabledReason}
-          sellDisabledReason={sellDisabledReason}
-          account={account}
           trading={trading}
-          donating={donating}
-          demoBalance={demoBalance}
+          setShowProviderModal={setShowProviderModal}
         />
       )}
 
-      {activeTab === "airdrop" && (
-        <AirdropPanel
-          account={account}
-          connectors={connectors}
-          checkingProof={checkingProof}
-          claimCount={claimCount}
-          freeClaims={freeClaims}
-          freeClaimsRemaining={freeClaimsRemaining}
-          invitesRequired={invitesRequired}
-          poolFunded={poolFunded}
-          invitesOpen={invitesOpen}
-          invitedBy={invitedBy}
-          hasClaimed={hasClaimed}
-          proof={proof}
-          proofRows={proofRows}
-          status={status}
-          nextStep={nextStep}
-          claimDisabledReason={claimDisabledReason}
-          recipient={recipient}
-          setRecipient={setRecipient}
-          refreshProof={() => refreshProof()}
-          disconnectWallet={disconnectWallet}
-          claim={claim}
-          claiming={claiming}
-          inviting={inviting}
-          networkLabel={networkLabel}
-          copyToClipboard={copyToClipboard}
-          copiedKey={copiedKey}
-          setShowProviderModal={setShowProviderModal}
-          refreshOnChain={refreshOnChain}
-        />
+      {/* Manage (Invites + Trade) */}
+      {userIntent === 'manage' && (
+        <>
+          <InvitesPanel
+            account={account}
+            hasClaimed={hasClaimed}
+            invitesOpen={invitesOpen}
+            invitedBy={invitedBy}
+            maxInvites={maxInvites}
+            invitesCreated={invitesCreated}
+            normalizedSlots={normalizedSlots}
+            invitee={invitee}
+            setInvitee={setInvitee}
+            createInvite={createInvite}
+            refreshOnChain={refreshOnChain}
+            setShowProviderModal={setShowProviderModal}
+            copyToClipboard={copyToClipboard}
+            copiedKey={copiedKey}
+            revokingSlot={revokingSlot}
+            revokeInvite={revokeInvite}
+            inviting={inviting}
+            hasEmptySlot={hasEmptySlot}
+          />
+          <MarketPanel
+            contractAddress={CONTRACT_ADDRESS}
+            reserveEth={reserveEth}
+            reserveDemo={reserveDemo}
+            priceEthPerDemo={priceEthPerDemo}
+            priceDemoPerEth={priceDemoPerEth}
+            poolFunded={poolFunded}
+            poolHasDemo={poolHasDemo}
+            buyQuote={buyQuote}
+            sellQuote={sellQuote}
+            buyMinOut={buyMinOut}
+            sellMinOut={sellMinOut}
+            buyEthAmount={buyEthAmount}
+            setBuyEthAmount={setBuyEthAmount}
+            sellDemoAmount={sellDemoAmount}
+            setSellDemoAmount={setSellDemoAmount}
+            donateAmount={donateAmount}
+            setDonateAmount={setDonateAmount}
+            slippage={slippage}
+            setSlippage={setSlippage}
+            slippageBps={slippageBps}
+            handleDonate={handleDonate}
+            handleBuy={handleBuy}
+            handleSell={handleSell}
+            donateDisabledReason={donateDisabledReason}
+            buyDisabledReason={buyDisabledReason}
+            sellDisabledReason={sellDisabledReason}
+            account={account}
+            trading={trading}
+            donating={donating}
+            demoBalance={demoBalance}
+          />
+        </>
       )}
 
-      {activeTab === "invites" && (
-        <InvitesPanel
-          account={account}
-          hasClaimed={hasClaimed}
-          invitesOpen={invitesOpen}
-          invitedBy={invitedBy}
-          maxInvites={maxInvites}
-          invitesCreated={invitesCreated}
-          normalizedSlots={normalizedSlots}
-          invitee={invitee}
-          setInvitee={setInvitee}
-          createInvite={createInvite}
-          refreshOnChain={refreshOnChain}
-          setShowProviderModal={setShowProviderModal}
-          copyToClipboard={copyToClipboard}
-          copiedKey={copiedKey}
-          revokingSlot={revokingSlot}
-          revokeInvite={revokeInvite}
-          inviting={inviting}
-          hasEmptySlot={hasEmptySlot}
-        />
+      {/* Back button when intent is selected */}
+      {userIntent && (
+        <div className="mx-auto max-w-3xl px-4 py-6">
+          <button
+            onClick={() => setUserIntent(null)}
+            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5"
+          >
+            ← Back to Main Menu
+          </button>
+        </div>
       )}
 
       <ProviderModal
