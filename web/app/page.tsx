@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { ZeroAddress, getAddress, isAddress } from "ethers";
+import { formatEther, parseEther } from "viem";
 import {
   API_BASE,
   CHAIN_ID,
@@ -13,7 +14,7 @@ import {
   ProofResponse,
 } from "../lib/airdrop";
 import { useAccount, useConnect, useDisconnect, usePublicClient, useSwitchChain } from "wagmi";
-import { writeContract, readContract } from "wagmi/actions";
+import { writeContract, readContract, sendTransaction } from "wagmi/actions";
 import { sepolia } from "wagmi/chains";
 import { wagmiConfig } from "../lib/wagmi";
 
@@ -27,6 +28,12 @@ type Tone = "info" | "good" | "bad";
 
 const shorten = (addr?: string | null) =>
   addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
+
+const formatToken = (value: bigint, digits = 4) => {
+  const num = Number(formatEther(value));
+  if (!Number.isFinite(num)) return "0";
+  return num.toLocaleString(undefined, { maximumFractionDigits: digits });
+};
 
 export default function HomePage() {
   const { address: account, chain } = useAccount();
@@ -62,6 +69,14 @@ export default function HomePage() {
   const [recipient, setRecipient] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showHow, setShowHow] = useState(false);
+  const [reserveEth, setReserveEth] = useState<bigint>(0n);
+  const [reserveDemo, setReserveDemo] = useState<bigint>(0n);
+  const [demoBalance, setDemoBalance] = useState<bigint>(0n);
+  const [buyEthAmount, setBuyEthAmount] = useState("");
+  const [sellDemoAmount, setSellDemoAmount] = useState("");
+  const [trading, setTrading] = useState(false);
+  const [donateAmount, setDonateAmount] = useState("");
+  const [donating, setDonating] = useState(false);
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
@@ -122,6 +137,10 @@ export default function HomePage() {
     run();
   }, [account, chain, switchChain]);
 
+  useEffect(() => {
+    refreshReserves(account);
+  }, [account]);
+
   const resetUi = () => {
     setClaimCount(null);
     setHasClaimed(false);
@@ -130,6 +149,7 @@ export default function HomePage() {
     setInvitationSlots([]);
     setProof(null);
     setRecipient("");
+    setDemoBalance(0n);
   };
 
   const connectWallet = async (connectorId?: string) => {
@@ -164,6 +184,35 @@ export default function HomePage() {
       tone: "info",
       message: "Disconnected. Select a wallet provider and connect again.",
     });
+  };
+
+  const refreshReserves = async (addr?: string) => {
+    const target = addr ?? account;
+    try {
+      const [reserves, bal] = await Promise.all([
+        readContract(wagmiConfig, {
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          abi: DEMO_ABI,
+          functionName: "getReserves",
+        }),
+        target
+          ? readContract(wagmiConfig, {
+              address: CONTRACT_ADDRESS as `0x${string}`,
+              abi: DEMO_ABI,
+              functionName: "balanceOf",
+              args: [target as `0x${string}`],
+            })
+          : Promise.resolve(0n),
+      ]);
+      const tuple = reserves as readonly [bigint, bigint];
+      setReserveEth(BigInt(tuple[0]));
+      setReserveDemo(BigInt(tuple[1]));
+      if (typeof bal === "bigint") {
+        setDemoBalance(bal);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const refreshOnChain = async (addr?: string) => {
@@ -228,6 +277,7 @@ export default function HomePage() {
       setFreeClaims(Number(free));
       setMaxInvites(Number(max));
       setInvitationSlots(parsedSlots);
+      await refreshReserves(target);
     } catch (err: any) {
       console.error(err);
       setStatus({
@@ -512,6 +562,188 @@ export default function HomePage() {
     }
   };
 
+  const handleBuy = async () => {
+    if (!account) {
+      setShowProviderModal(true);
+      setStatus({ tone: "info", message: "Connect a wallet to trade." });
+      return;
+    }
+    let amountIn: bigint;
+    try {
+      amountIn = parseEther(buyEthAmount || "0");
+    } catch {
+      setStatus({ tone: "bad", message: "Enter a valid ETH amount." });
+      return;
+    }
+    if (amountIn <= 0n) {
+      setStatus({ tone: "bad", message: "Amount must be greater than zero." });
+      return;
+    }
+    if (!poolFunded || !poolHasDemo) {
+      setStatus({
+        tone: "bad",
+        message: "Market maker has no liquidity yet. Seed ETH or wait for claims.",
+      });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch {
+        setStatus({ tone: "bad", message: `Switch to ${CHAIN_NAME} to trade.` });
+        return;
+      }
+    }
+    try {
+      setTrading(true);
+      setStatus({ tone: "info", message: "Submitting buy transaction…" });
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "buyDemo",
+        args: [],
+        account: account as `0x${string}`,
+        value: amountIn,
+        chainId: CHAIN_ID,
+      });
+      setStatus({
+        tone: "info",
+        message: `Tx sent: ${hash.slice(0, 10)}… awaiting confirmation.`,
+      });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      setStatus({ tone: "good", message: "Swap confirmed. DEMO purchased." });
+      setBuyEthAmount("");
+      await refreshReserves(account);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      setStatus({ tone: "bad", message: err?.message || "Buy failed." });
+    } finally {
+      setTrading(false);
+    }
+  };
+
+  const handleDonate = async () => {
+    if (!account) {
+      setShowProviderModal(true);
+      setStatus({ tone: "info", message: "Connect a wallet to donate." });
+      return;
+    }
+    let amountIn: bigint;
+    try {
+      amountIn = parseEther(donateAmount || "0");
+    } catch {
+      setStatus({ tone: "bad", message: "Enter a valid ETH amount." });
+      return;
+    }
+    if (amountIn <= 0n) {
+      setStatus({ tone: "bad", message: "Amount must be greater than zero." });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch {
+        setStatus({ tone: "bad", message: `Switch to ${CHAIN_NAME} to donate.` });
+        return;
+      }
+    }
+    try {
+      setDonating(true);
+      setStatus({ tone: "info", message: "Submitting donation transaction…" });
+      const hash = await sendTransaction(wagmiConfig, {
+        to: CONTRACT_ADDRESS as `0x${string}`,
+        value: amountIn,
+        account: account as `0x${string}`,
+        chainId: CHAIN_ID,
+      });
+      setStatus({
+        tone: "info",
+        message: `Tx sent: ${hash.slice(0, 10)}… awaiting confirmation.`,
+      });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      setStatus({ tone: "good", message: "Donation confirmed. Thanks for seeding the pool!" });
+      setDonateAmount("");
+      await refreshReserves(account);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      setStatus({ tone: "bad", message: err?.message || "Donation failed." });
+    } finally {
+      setDonating(false);
+    }
+  };
+
+  const handleSell = async () => {
+    if (!account) {
+      setShowProviderModal(true);
+      setStatus({ tone: "info", message: "Connect a wallet to trade." });
+      return;
+    }
+    let amountIn: bigint;
+    try {
+      amountIn = parseEther(sellDemoAmount || "0");
+    } catch {
+      setStatus({ tone: "bad", message: "Enter a valid DEMO amount." });
+      return;
+    }
+    if (amountIn <= 0n) {
+      setStatus({ tone: "bad", message: "Amount must be greater than zero." });
+      return;
+    }
+    if (amountIn > demoBalance) {
+      setStatus({ tone: "bad", message: "You don’t have enough DEMO to sell." });
+      return;
+    }
+    if (!poolFunded || reserveEth === 0n) {
+      setStatus({
+        tone: "bad",
+        message: "Market maker has no ETH liquidity yet.",
+      });
+      return;
+    }
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch {
+        setStatus({ tone: "bad", message: `Switch to ${CHAIN_NAME} to trade.` });
+        return;
+      }
+    }
+    try {
+      setTrading(true);
+      setStatus({ tone: "info", message: "Submitting sell transaction…" });
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "sellDemo",
+        args: [amountIn],
+        account: account as `0x${string}`,
+        chainId: CHAIN_ID,
+      });
+      setStatus({
+        tone: "info",
+        message: `Tx sent: ${hash.slice(0, 10)}… awaiting confirmation.`,
+      });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      setStatus({ tone: "good", message: "Swap confirmed. ETH received." });
+      setSellDemoAmount("");
+      await refreshReserves(account);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      setStatus({ tone: "bad", message: err?.message || "Sell failed." });
+    } finally {
+      setTrading(false);
+    }
+  };
+
   const proofRows = proof
     ? [
         { label: "Address", value: proof.address },
@@ -528,6 +760,48 @@ export default function HomePage() {
     return [...base, ...Array.from({ length: missing }, () => ({ invitee: null, used: false }))];
   }, [invitationSlots, maxInvites]);
   const hasEmptySlot = normalizedSlots.some((s) => !s.invitee);
+  const poolFunded = reserveEth > 0n;
+  const poolHasDemo = reserveDemo > 0n;
+
+  const priceEthPerDemo = useMemo(() => {
+    if (!poolFunded || !poolHasDemo) return "—";
+    const eth = Number(formatEther(reserveEth));
+    const demo = Number(formatEther(reserveDemo));
+    if (demo === 0) return "—";
+    return (eth / demo).toFixed(6);
+  }, [poolFunded, poolHasDemo, reserveEth, reserveDemo]);
+
+  const priceDemoPerEth = useMemo(() => {
+    if (!poolFunded || !poolHasDemo) return "—";
+    const eth = Number(formatEther(reserveEth));
+    if (eth === 0) return "—";
+    const demo = Number(formatEther(reserveDemo));
+    return (demo / eth).toFixed(2);
+  }, [poolFunded, poolHasDemo, reserveEth, reserveDemo]);
+
+  const buyQuote = useMemo(() => {
+    if (!poolHasDemo || !poolFunded) return null;
+    try {
+      const amountIn = parseEther(buyEthAmount || "0");
+      if (amountIn <= 0n) return null;
+      const out = (amountIn * reserveDemo) / (reserveEth + amountIn);
+      return out > 0n ? out : null;
+    } catch {
+      return null;
+    }
+  }, [buyEthAmount, poolFunded, poolHasDemo, reserveDemo, reserveEth]);
+
+  const sellQuote = useMemo(() => {
+    if (!poolFunded) return null;
+    try {
+      const amountIn = parseEther(sellDemoAmount || "0");
+      if (amountIn <= 0n) return null;
+      const out = (amountIn * reserveEth) / (reserveDemo + amountIn);
+      return out > 0n ? out : null;
+    } catch {
+      return null;
+    }
+  }, [reserveEth, reserveDemo, sellDemoAmount, poolFunded]);
 
   const claimDisabledReason = useMemo(() => {
     if (!account) return "Connect your wallet to claim.";
@@ -640,6 +914,145 @@ export default function HomePage() {
               </li>
             </ol>
           )}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-3 pt-4 md:px-4">
+        <div className="glass w-full space-y-4 p-4 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-400">Trade</p>
+              <h3 className="text-xl font-semibold text-slate-50">Swap ETH ↔ DEMO</h3>
+              <p className="text-sm text-slate-300">
+                The contract-owned pool uses a constant-product curve. Buy with ETH or sell DEMO for ETH.
+              </p>
+            </div>
+          <div className="grid grid-cols-2 gap-2 text-sm text-slate-200">
+            <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+              <p className="text-xs text-slate-400">ETH reserve</p>
+              <p className="font-semibold">{formatToken(reserveEth)} ETH</p>
+            </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <p className="text-xs text-slate-400">DEMO reserve</p>
+                <p className="font-semibold">{formatToken(reserveDemo)} DEMO</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <p className="text-xs text-slate-400">Price (ETH per DEMO)</p>
+                <p className="font-semibold">{priceEthPerDemo}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <p className="text-xs text-slate-400">Price (DEMO per ETH)</p>
+                <p className="font-semibold">{priceDemoPerEth}</p>
+              </div>
+            </div>
+          </div>
+
+          {!poolFunded && (
+            <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+              The pool has no ETH yet. Send a small amount of ETH to the contract to unlock claiming and trading.
+            </div>
+          )}
+
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Donate ETH to seed the pool</p>
+                <p className="text-xs text-slate-400">
+                  Anyone can boost reserves. A simple ETH transfer increases liquidity and unlocks claiming.
+                </p>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                Contract: {shorten(CONTRACT_ADDRESS)}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                value={donateAmount}
+                onChange={(e) => setDonateAmount(e.target.value)}
+                placeholder="0.0001"
+                className="w-full flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+              />
+              <button
+                onClick={handleDonate}
+                disabled={donating || !account || chain?.id !== CHAIN_ID || !donateAmount}
+                className="w-full rounded-lg border border-emerald-400/50 bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-100 shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 disabled:opacity-50 sm:w-auto"
+              >
+                {donating ? "Sending…" : account ? "Donate ETH" : "Connect to donate"}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-100">Buy DEMO with ETH</p>
+                <span className="text-xs text-slate-400">
+                  You get {buyQuote ? `${formatToken(buyQuote)} DEMO` : "—"}
+                </span>
+              </div>
+              <div className="mt-3 space-y-2">
+                <input
+                  value={buyEthAmount}
+                  onChange={(e) => setBuyEthAmount(e.target.value)}
+                  placeholder="0.01"
+                  className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                />
+                <p className="text-xs text-slate-400">Enter ETH to spend. Slippage-free curve (no fee).</p>
+                <button
+                  onClick={handleBuy}
+                  disabled={
+                    trading ||
+                    !account ||
+                    !poolFunded ||
+                    !poolHasDemo ||
+                    chain?.id !== CHAIN_ID ||
+                    !buyEthAmount
+                  }
+                  className="w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  {trading ? "Submitting…" : account ? "Buy DEMO" : "Connect to trade"}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-100">Sell DEMO for ETH</p>
+                <span className="text-xs text-slate-400">
+                  You get {sellQuote ? `${formatToken(sellQuote)} ETH` : "—"}
+                </span>
+              </div>
+              <div className="mt-3 space-y-2">
+                <input
+                  value={sellDemoAmount}
+                  onChange={(e) => setSellDemoAmount(e.target.value)}
+                  placeholder="10"
+                  className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                />
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Available: {formatToken(demoBalance)} DEMO</span>
+                  <span>Needs pool ETH: {poolFunded ? "Ready" : "Seeded when ETH arrives"}</span>
+                </div>
+                <button
+                  onClick={handleSell}
+                  disabled={
+                    trading ||
+                    !account ||
+                    !poolFunded ||
+                    reserveEth === 0n ||
+                    chain?.id !== CHAIN_ID ||
+                    !sellDemoAmount
+                  }
+                  className="w-full rounded-lg border border-emerald-400/50 bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-100 shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  {trading ? "Submitting…" : account ? "Sell DEMO" : "Connect to trade"}
+                </button>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400">
+            Pool ownership has no LP tokens. ETH donations to the contract grow the reserves; each claim mints 10 DEMO into the pool.
+          </p>
         </div>
       </section>
 

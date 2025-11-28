@@ -57,10 +57,15 @@ contract DemoAirdrop {
 
     constructor(uint256 freeClaims_) payable {
         require(freeClaims_ > 0, "DEMO: free claims must be >0");
-        require(msg.value > 0, "DEMO: seed with ETH");
         FREE_CLAIMS = freeClaims_;
+        // Count any ETH sent at deployment as AMM seed; airdrop stays paused until reserveETH > 0.
         reserveETH = msg.value;
         reserveDEMO = 0;
+    }
+
+    /// @notice Accept direct ETH to seed or grow the AMM reserves.
+    receive() external payable {
+        reserveETH += msg.value;
     }
 
     // --- ERC20 ---
@@ -121,6 +126,7 @@ contract DemoAirdrop {
         require(recipient != address(0), "DEMO: recipient zero");
         require(!hasClaimed[account], "DEMO: already claimed");
         require(proof.length == proofFlags.length, "DEMO: proof length mismatch");
+        require(reserveETH > 0, "DEMO: market maker not funded");
 
         bytes32 leaf = keccak256(abi.encodePacked(account));
         require(_verify(leaf, proof, proofFlags), "DEMO: invalid proof");

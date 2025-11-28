@@ -4,7 +4,7 @@ export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://18.143.177.167:3000";
 export const CONTRACT_ADDRESS =
   process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ??
-  "0x786F94d1698a60eFCb26d25042395E7B2459442C";
+  "0x20E6EaD47195aBE822B6414F507df0EA1876EA34";
 export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "11155111");
 export const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME ?? "Sepolia";
 
@@ -17,6 +17,10 @@ export const DEMO_ABI = parseAbi([
   "function createInvitation(address invitee)",
   "function revokeInvitation(uint8 slot)",
   "function getInvitations(address inviter) view returns (address[5] invitees, bool[5] used)",
+  "function getReserves() view returns (uint256 ethReserve, uint256 demoReserve)",
+  "function buyDemo() payable returns (uint256 amountOut)",
+  "function sellDemo(uint256 amountIn) returns (uint256 amountOut)",
+  "function balanceOf(address) view returns (uint256)",
   "function claimCount() view returns (uint256)",
   "function FREE_CLAIMS() view returns (uint256)",
   "function MAX_INVITES() view returns (uint8)",
