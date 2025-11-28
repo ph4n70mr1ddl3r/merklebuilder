@@ -269,7 +269,7 @@ export function EnhancedMarketPanel({
 
   return (
     <section className="mx-auto max-w-6xl px-3 pt-6 pb-14 md:px-4">
-      <div className="glass w-full space-y-6 p-5 md:p-6">
+      <div className="glass-card w-full space-y-6 p-5 md:p-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

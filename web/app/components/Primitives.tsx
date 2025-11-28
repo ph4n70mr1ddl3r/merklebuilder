@@ -11,6 +11,12 @@ export function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+export function Skeleton({ className }: { className?: string }) {
+  return (
+    <div className={clsx("animate-shimmer rounded bg-white/5", className)} />
+  );
+}
+
 export function InfoRow({
   label,
   value,

@@ -57,7 +57,7 @@ export function SimplifiedClaimPanel({
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-6">
-      <div className="glass p-6 md:p-8">
+      <div className="glass-card p-6 md:p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-slate-50 mb-3">Claim Your Free DEMO Tokens</h2>

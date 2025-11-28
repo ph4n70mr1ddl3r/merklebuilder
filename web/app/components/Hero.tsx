@@ -42,7 +42,7 @@ export function Hero({
       <p className="mt-2 text-base text-slate-400">
         Not eligible? Trade tokens with ETH. Already claimed? Invite friends and earn rewards.
       </p>
-      <div className="mt-6 flex items-center justify-center">
+            <div className="mt-6 flex items-center justify-center">
         <button
           onClick={onPrimary}
           className="rounded-full border border-emerald-400/70 bg-gradient-to-r from-emerald-400 to-emerald-500 px-8 py-3 text-lg font-bold text-emerald-950 shadow-lg shadow-emerald-500/40 transition hover:scale-105 hover:-translate-y-1"
@@ -51,43 +51,23 @@ export function Hero({
         </button>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-300">
-        <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
-          Contract:{" "}
-          <Link
-            href={`https://sepolia.etherscan.io/address/${contractAddress}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-emerald-300 hover:underline"
-          >
-            {shorten(contractAddress)}
-          </Link>
+      {/* Live Stats Ticker */}
+      <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="glass rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wider text-slate-400">Total Claims</p>
+          <p className="mt-1 text-2xl font-bold text-white">{stats.claimCountText}</p>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
-          Proof API: <span className="font-mono text-xs text-emerald-300">{new URL(apiBase).hostname}</span>
+        <div className="glass rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wider text-slate-400">Free Claims Left</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-400">{stats.freeClaimsText.split(' ')[0]}</p>
         </div>
-      </div>
-
-      <div className="mt-8 grid gap-4 text-left text-sm text-slate-200 md:grid-cols-4">
-        <div className="rounded-xl border border-emerald-300/40 bg-emerald-400/10 p-5 shadow-lg shadow-emerald-500/20">
-          <p className="text-xs uppercase tracking-wide text-emerald-300">Eligible Users</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-50">64M+</p>
-          <p className="mt-1 text-xs text-emerald-200">Mainnet addresses</p>
+        <div className="glass rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wider text-slate-400">Current Price</p>
+          <p className="mt-1 text-2xl font-bold text-cyan-400">{stats.marketText.split(' ')[0]}</p>
         </div>
-        <div className="rounded-xl border border-cyan-300/40 bg-cyan-400/10 p-5 shadow-lg shadow-cyan-500/20">
-          <p className="text-xs uppercase tracking-wide text-cyan-300">Claim Amount</p>
-          <p className="mt-2 text-3xl font-bold text-cyan-50">100</p>
-          <p className="mt-1 text-xs text-cyan-200">DEMO tokens</p>
-        </div>
-        <div className="rounded-xl border border-purple-300/40 bg-purple-400/10 p-5 shadow-lg shadow-purple-500/20">
-          <p className="text-xs uppercase tracking-wide text-purple-300">Gas Requirement</p>
-          <p className="mt-2 text-3xl font-bold text-purple-50">≥0.004</p>
-          <p className="mt-1 text-xs text-purple-200">ETH paid</p>
-        </div>
-        <div className="rounded-xl border border-white/15 bg-white/10 p-5 shadow-lg shadow-slate-500/10">
-          <p className="text-xs uppercase tracking-wide text-slate-300">Block Range</p>
-          <p className="mt-2 text-3xl font-bold text-slate-50">0 - 23M</p>
-          <p className="mt-1 text-xs text-slate-300">Ethereum mainnet</p>
+        <div className="glass rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wider text-slate-400">Liquidity</p>
+          <p className="mt-1 text-sm font-mono text-slate-300">{stats.reserveText.split('·')[0]}</p>
         </div>
       </div>
     </header>
