@@ -17,6 +17,7 @@ import { ProviderModal } from "./components/ProviderModal";
 import { PersonaSelector, UserIntent } from "./components/PersonaSelector";
 import { SimplifiedClaimPanel } from "./components/SimplifiedClaimPanel";
 import { SimplifiedBuyPanel } from "./components/SimplifiedBuyPanel";
+import { EnhancedMarketPanel } from "./components/EnhancedMarketPanel";
 import { formatToken, shorten } from "../lib/format";
 import { addressSchema, amountSchema } from "../lib/validators";
 
@@ -412,15 +413,13 @@ export default function HomePage() {
       return;
     }
     try {
-      toast.loading("Connecting wallet…");
+      const toastId = toast.loading("Connecting wallet…");
       setStatus({ tone: "info", message: "Connecting wallet…" });
       await connect({ connector, chainId: CHAIN_ID });
       setShowProviderModal(false);
-      toast.dismiss();
-      toast.success("Wallet connected successfully!");
+      toast.success("Wallet connected successfully!", { id: toastId });
     } catch (err: any) {
       console.error(err);
-      toast.dismiss();
       toast.error(err?.message || "Unable to connect wallet.");
       setStatus({
         tone: "bad",
@@ -853,6 +852,155 @@ export default function HomePage() {
     }
   };
 
+  // Enhanced trade handlers for 4 trade modes
+  const handleBuyExactDemo = async (demoAmount: bigint, maxEthIn: bigint) => {
+    if (!account) return;
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch {
+        toast.error(`Switch to ${CHAIN_NAME} to trade.`);
+        return;
+      }
+    }
+    try {
+      setTrading(true);
+      const toastId = toast.loading("Buying exact DEMO amount…");
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "buyDemo",
+        args: [demoAmount],
+        account: account as `0x${string}`,
+        value: maxEthIn,
+        chainId: CHAIN_ID,
+      });
+      toast.loading(`Tx sent: ${hash.slice(0, 10)}… awaiting confirmation.`, { id: toastId });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      toast.success("Swap confirmed. DEMO purchased.", { id: toastId });
+      await refreshReserves(account);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Buy failed.");
+    } finally {
+      setTrading(false);
+    }
+  };
+
+  const handleSellExactDemo = async (demoAmount: bigint, minEthOut: bigint) => {
+    if (!account) return;
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch {
+        toast.error(`Switch to ${CHAIN_NAME} to trade.`);
+        return;
+      }
+    }
+    try {
+      setTrading(true);
+      const toastId = toast.loading("Selling exact DEMO amount…");
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "sellDemo",
+        args: [demoAmount, minEthOut],
+        account: account as `0x${string}`,
+        chainId: CHAIN_ID,
+      });
+      toast.loading(`Tx sent: ${hash.slice(0, 10)}… awaiting confirmation.`, { id: toastId });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      toast.success("Swap confirmed. ETH received.", { id: toastId });
+      await refreshReserves(account);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Sell failed.");
+    } finally {
+      setTrading(false);
+    }
+  };
+
+  const handleSpendExactEth = async (ethAmount: bigint, minDemoOut: bigint) => {
+    if (!account) return;
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch {
+        toast.error(`Switch to ${CHAIN_NAME} to trade.`);
+        return;
+      }
+    }
+    try {
+      setTrading(true);
+      const toastId = toast.loading("Spending exact ETH amount…");
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "buyDemo",
+        args: [minDemoOut],
+        account: account as `0x${string}`,
+        value: ethAmount,
+        chainId: CHAIN_ID,
+      });
+      toast.loading(`Tx sent: ${hash.slice(0, 10)}… awaiting confirmation.`, { id: toastId });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      toast.success("Swap confirmed. DEMO purchased.", { id: toastId });
+      await refreshReserves(account);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Buy failed.");
+    } finally {
+      setTrading(false);
+    }
+  };
+
+  const handleReceiveExactEth = async (demoAmount: bigint, exactEthOut: bigint) => {
+    if (!account) return;
+    if (chain?.id !== CHAIN_ID && switchChain) {
+      try {
+        await switchChain({ chainId: CHAIN_ID });
+      } catch {
+        toast.error(`Switch to ${CHAIN_NAME} to trade.`);
+        return;
+      }
+    }
+    try {
+      setTrading(true);
+      const toastId = toast.loading("Selling DEMO for exact ETH amount…");
+      // Calculate minOut with slippage for the exact ETH we want
+      const minOut = exactEthOut - (exactEthOut * (slippageBps || 100n)) / 10000n;
+      const hash = await writeContract(wagmiConfig, {
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: DEMO_ABI,
+        functionName: "sellDemo",
+        args: [demoAmount, minOut > 0n ? minOut : 1n],
+        account: account as `0x${string}`,
+        chainId: CHAIN_ID,
+      });
+      toast.loading(`Tx sent: ${hash.slice(0, 10)}… awaiting confirmation.`, { id: toastId });
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+      toast.success("Swap confirmed. Exact ETH received.", { id: toastId });
+      await refreshReserves(account);
+      await refreshOnChain(account);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Sell failed.");
+    } finally {
+      setTrading(false);
+    }
+  };
+
   const proofRows = proof
     ? [
       { label: "Address", value: proof.address },
@@ -1022,8 +1170,7 @@ export default function HomePage() {
         chainName={CHAIN_NAME}
         contractAddress={CONTRACT_ADDRESS}
         apiBase={API_BASE}
-        onPrimary={() => setUserIntent('claim')}
-        onSecondary={() => setUserIntent('buy')}
+        onPrimary={() => setUserIntent(null)}
         stats={heroStats}
       />
 
@@ -1053,14 +1200,39 @@ export default function HomePage() {
           poolFunded={poolFunded}
           onCheckEligibility={() => refreshProof()}
           onClaim={claim}
-          onSwitchToInvite={() => setUserIntent('manage')}
+          onSwitchToInvite={() => setUserIntent('invite')}
+          onSwitchToTrade={() => setUserIntent('trade')}
           setShowProviderModal={setShowProviderModal}
         />
       )}
 
-      {/* Simplified Buy Flow */}
-      {userIntent === 'buy' && (
-        <SimplifiedBuyPanel
+      {/* Invite Friends */}
+      {userIntent === 'invite' && (
+        <InvitesPanel
+          account={account}
+          hasClaimed={hasClaimed}
+          invitesOpen={invitesOpen}
+          invitedBy={invitedBy}
+          maxInvites={maxInvites}
+          invitesCreated={invitesCreated}
+          normalizedSlots={normalizedSlots}
+          invitee={invitee}
+          setInvitee={setInvitee}
+          createInvite={createInvite}
+          refreshOnChain={refreshOnChain}
+          setShowProviderModal={setShowProviderModal}
+          copyToClipboard={copyToClipboard}
+          copiedKey={copiedKey}
+          revokingSlot={revokingSlot}
+          revokeInvite={revokeInvite}
+          inviting={inviting}
+          hasEmptySlot={hasEmptySlot}
+        />
+      )}
+
+      {/* Trade Tokens */}
+      {userIntent === 'trade' && (
+        <EnhancedMarketPanel
           account={account}
           contractAddress={CONTRACT_ADDRESS}
           reserveEth={reserveEth}
@@ -1068,74 +1240,18 @@ export default function HomePage() {
           priceEthPerDemo={priceEthPerDemo}
           priceDemoPerEth={priceDemoPerEth}
           poolFunded={poolFunded}
-          buyQuote={buyQuote}
-          buyEthAmount={buyEthAmount}
-          setBuyEthAmount={setBuyEthAmount}
+          poolHasDemo={poolHasDemo}
           slippage={slippage}
           setSlippage={setSlippage}
-          handleBuy={handleBuy}
-          buyDisabledReason={buyDisabledReason}
+          slippageBps={slippageBps}
+          handleBuyDemo={handleBuyExactDemo}
+          handleSellDemo={handleSellExactDemo}
+          handleSpendEth={handleSpendExactEth}
+          handleReceiveEth={handleReceiveExactEth}
+          demoBalance={demoBalance}
           trading={trading}
           setShowProviderModal={setShowProviderModal}
         />
-      )}
-
-      {/* Manage (Invites + Trade) */}
-      {userIntent === 'manage' && (
-        <>
-          <InvitesPanel
-            account={account}
-            hasClaimed={hasClaimed}
-            invitesOpen={invitesOpen}
-            invitedBy={invitedBy}
-            maxInvites={maxInvites}
-            invitesCreated={invitesCreated}
-            normalizedSlots={normalizedSlots}
-            invitee={invitee}
-            setInvitee={setInvitee}
-            createInvite={createInvite}
-            refreshOnChain={refreshOnChain}
-            setShowProviderModal={setShowProviderModal}
-            copyToClipboard={copyToClipboard}
-            copiedKey={copiedKey}
-            revokingSlot={revokingSlot}
-            revokeInvite={revokeInvite}
-            inviting={inviting}
-            hasEmptySlot={hasEmptySlot}
-          />
-          <MarketPanel
-            contractAddress={CONTRACT_ADDRESS}
-            reserveEth={reserveEth}
-            reserveDemo={reserveDemo}
-            priceEthPerDemo={priceEthPerDemo}
-            priceDemoPerEth={priceDemoPerEth}
-            poolFunded={poolFunded}
-            poolHasDemo={poolHasDemo}
-            buyQuote={buyQuote}
-            sellQuote={sellQuote}
-            buyMinOut={buyMinOut}
-            sellMinOut={sellMinOut}
-            buyEthAmount={buyEthAmount}
-            setBuyEthAmount={setBuyEthAmount}
-            sellDemoAmount={sellDemoAmount}
-            setSellDemoAmount={setSellDemoAmount}
-            donateAmount={donateAmount}
-            setDonateAmount={setDonateAmount}
-            slippage={slippage}
-            setSlippage={setSlippage}
-            slippageBps={slippageBps}
-            handleDonate={handleDonate}
-            handleBuy={handleBuy}
-            handleSell={handleSell}
-            donateDisabledReason={donateDisabledReason}
-            buyDisabledReason={buyDisabledReason}
-            sellDisabledReason={sellDisabledReason}
-            account={account}
-            trading={trading}
-            donating={donating}
-            demoBalance={demoBalance}
-          />
-        </>
       )}
 
       {/* Back button when intent is selected */}

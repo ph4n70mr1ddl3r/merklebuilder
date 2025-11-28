@@ -18,6 +18,7 @@ type SimplifiedClaimPanelProps = {
   onCheckEligibility: () => void;
   onClaim: () => void;
   onSwitchToInvite: () => void;
+  onSwitchToTrade: () => void;
   setShowProviderModal: (show: boolean) => void;
 };
 
@@ -35,6 +36,7 @@ export function SimplifiedClaimPanel({
   onCheckEligibility,
   onClaim,
   onSwitchToInvite,
+  onSwitchToTrade,
   setShowProviderModal,
 }: SimplifiedClaimPanelProps) {
   // Determine current step
@@ -308,24 +310,28 @@ export function SimplifiedClaimPanel({
                   <div className="space-y-2">
                     <div className="flex items-start gap-2 text-sm text-slate-300">
                       <span className="text-cyan-400">→</span>
-                      <span>Create up to 5 invitations for friends in the &quot;Invite & Trade&quot; section</span>
+                      <span>Create up to 5 invitations for friends to earn referral rewards</span>
                     </div>
                     <div className="flex items-start gap-2 text-sm text-slate-300">
-                      <span className="text-purple-400">→</span>
-                      <span>Sell your DEMO tokens on the market maker</span>
-                    </div>
-                    <div className="flex items-start gap-2 text-sm text-slate-300">
-                      <span className="text-emerald-400">→</span>
-                      <span>Earn referral rewards (1 DEMO per level, up to 5 levels deep)</span>
+                      <span className="text-orange-400">→</span>
+                      <span>Trade your DEMO tokens on the market maker (buy more or sell)</span>
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={onSwitchToInvite}
-                  className="rounded-lg bg-gradient-to-r from-cyan-400 to-cyan-500 px-6 py-3 font-semibold text-cyan-950 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5"
-                >
-                  Manage Invites & Trade
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={onSwitchToInvite}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-cyan-400 to-cyan-500 px-6 py-3 font-semibold text-cyan-950 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5"
+                  >
+                    👥 Invite Friends
+                  </button>
+                  <button
+                    onClick={onSwitchToTrade}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-orange-400 to-orange-500 px-6 py-3 font-semibold text-orange-950 shadow-lg shadow-orange-500/30 transition hover:-translate-y-0.5"
+                  >
+                    📈 Trade Tokens
+                  </button>
+                </div>
               </div>
             </div>
           </div>

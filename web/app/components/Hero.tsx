@@ -17,7 +17,6 @@ type HeroProps = {
   contractAddress: string;
   apiBase: string;
   onPrimary: () => void;
-  onSecondary: () => void;
   stats: HeroStats;
 };
 
@@ -26,7 +25,6 @@ export function Hero({
   contractAddress,
   apiBase,
   onPrimary,
-  onSecondary,
   stats,
 }: HeroProps) {
   return (
@@ -42,20 +40,14 @@ export function Hero({
         Paid ≥0.004 ETH in gas fees (blocks 0-23M)? Claim your <span className="font-semibold text-emerald-400">100 DEMO tokens</span> now.
       </p>
       <p className="mt-2 text-base text-slate-400">
-        Not eligible? Buy directly with ETH. Already claimed? Invite friends and trade.
+        Not eligible? Trade tokens with ETH. Already claimed? Invite friends and earn rewards.
       </p>
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-200">
+      <div className="mt-6 flex items-center justify-center">
         <button
           onClick={onPrimary}
-          className="rounded-full border border-emerald-400/70 bg-gradient-to-r from-emerald-400 to-emerald-500 px-6 py-3 text-base font-bold text-emerald-950 shadow-lg shadow-emerald-500/40 transition hover:scale-105 hover:-translate-y-1"
+          className="rounded-full border border-emerald-400/70 bg-gradient-to-r from-emerald-400 to-emerald-500 px-8 py-3 text-lg font-bold text-emerald-950 shadow-lg shadow-emerald-500/40 transition hover:scale-105 hover:-translate-y-1"
         >
-          🎁 Check My Eligibility
-        </button>
-        <button
-          onClick={onSecondary}
-          className="rounded-full border border-purple-400/70 bg-gradient-to-r from-purple-400 to-purple-500 px-6 py-3 text-base font-bold text-purple-950 shadow-lg shadow-purple-500/40 transition hover:scale-105 hover:-translate-y-1"
-        >
-          💰 Buy Tokens
+          🎁 Get Started
         </button>
       </div>
 

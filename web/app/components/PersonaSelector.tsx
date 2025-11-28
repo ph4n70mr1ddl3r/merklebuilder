@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export type UserIntent = 'claim' | 'buy' | 'manage';
+export type UserIntent = 'claim' | 'invite' | 'trade';
 
 type PersonaSelectorProps = {
   onSelectIntent: (intent: UserIntent) => void;
@@ -61,71 +61,75 @@ export function PersonaSelector({
             </span>
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
-              Earn referral rewards
+              100 DEMO
             </span>
           </div>
         </button>
 
-        {/* Buy Tokens */}
+        {/* Invite Friends */}
         <button
-          onClick={() => onSelectIntent('buy')}
-          className={`relative group rounded-2xl border p-6 text-left transition-all ${
-            currentIntent === 'buy'
-              ? 'border-purple-400 bg-purple-400/10 shadow-lg shadow-purple-500/20'
-              : 'border-white/10 bg-white/5 hover:border-purple-400/50 hover:bg-white/10'
-          } hover:-translate-y-1`}
-        >
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-400/20">
-              <span className="text-2xl">💰</span>
-            </div>
-          </div>
-          <h3 className="text-lg font-semibold text-slate-50 mb-2">Buy DEMO Tokens</h3>
-          <p className="text-sm text-slate-300 mb-3">
-            Not eligible? No problem. Buy DEMO directly with ETH through our AMM
-          </p>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-purple-400"></span>
-              Instant swap
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-purple-300"></span>
-              No KYC needed
-            </span>
-          </div>
-        </button>
-
-        {/* Manage & Trade */}
-        <button
-          onClick={() => onSelectIntent('manage')}
+          onClick={() => onSelectIntent('invite')}
           disabled={!hasClaimed}
           className={`relative group rounded-2xl border p-6 text-left transition-all ${
-            currentIntent === 'manage'
+            currentIntent === 'invite'
               ? 'border-cyan-400 bg-cyan-400/10 shadow-lg shadow-cyan-500/20'
               : 'border-white/10 bg-white/5 hover:border-cyan-400/50 hover:bg-white/10'
           } ${!hasClaimed ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-1'}`}
         >
           <div className="flex items-start justify-between mb-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-400/20">
-              <span className="text-2xl">🎯</span>
+              <span className="text-2xl">👥</span>
             </div>
             {!hasClaimed && (
               <span className="rounded-full bg-slate-400/20 px-2 py-1 text-xs text-slate-400">Claim first</span>
             )}
           </div>
-          <h3 className="text-lg font-semibold text-slate-50 mb-2">Invite & Trade</h3>
+          <h3 className="text-lg font-semibold text-slate-50 mb-2">Invite Friends</h3>
           <p className="text-sm text-slate-300 mb-3">
-            Create invites for friends and sell your DEMO tokens on the market
+            Share invite slots and earn referral rewards up to 5 levels deep
           </p>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
-              5 invite slots
+              5 slots max
             </span>
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-300"></span>
-              Sell anytime
+              1 DEMO/level
+            </span>
+          </div>
+        </button>
+
+        {/* Trade Tokens */}
+        <button
+          onClick={() => onSelectIntent('trade')}
+          disabled={!hasClaimed}
+          className={`relative group rounded-2xl border p-6 text-left transition-all ${
+            currentIntent === 'trade'
+              ? 'border-orange-400 bg-orange-400/10 shadow-lg shadow-orange-500/20'
+              : 'border-white/10 bg-white/5 hover:border-orange-400/50 hover:bg-white/10'
+          } ${!hasClaimed ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-1'}`}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-400/20">
+              <span className="text-2xl">📈</span>
+            </div>
+            {!hasClaimed && (
+              <span className="rounded-full bg-slate-400/20 px-2 py-1 text-xs text-slate-400">Claim first</span>
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-slate-50 mb-2">Trade Tokens</h3>
+          <p className="text-sm text-slate-300 mb-3">
+            Buy more or sell your DEMO tokens anytime on the market maker
+          </p>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-400"></span>
+              Buy/Sell
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-300"></span>
+              AMM pricing
             </span>
           </div>
         </button>
