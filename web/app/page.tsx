@@ -35,6 +35,20 @@ const formatToken = (value: bigint, digits = 4) => {
   return num.toLocaleString(undefined, { maximumFractionDigits: digits });
 };
 
+const parseSlippageBps = (value: string): bigint | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^(\d{1,3})(?:\.(\d{0,2}))?$/);
+  if (!match) return null;
+  const whole = Number(match[1]);
+  if (whole > 100) return null;
+  const frac = match[2] ?? "";
+  const padded = (frac + "00").slice(0, 2);
+  const bps = BigInt(whole * 100 + Number(padded));
+  if (bps > 10000n) return null;
+  return bps;
+};
+
 export default function HomePage() {
   const { address: account, chain } = useAccount();
   const { connectors, connect, status: connectStatus, error: connectError } = useConnect();
@@ -74,6 +88,7 @@ export default function HomePage() {
   const [demoBalance, setDemoBalance] = useState<bigint>(0n);
   const [buyEthAmount, setBuyEthAmount] = useState("");
   const [sellDemoAmount, setSellDemoAmount] = useState("");
+  const [slippage, setSlippage] = useState("1.0");
   const [trading, setTrading] = useState(false);
   const [donateAmount, setDonateAmount] = useState("");
   const [donating, setDonating] = useState(false);
@@ -81,6 +96,7 @@ export default function HomePage() {
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
   const invitesOpen = claimCount !== null ? claimCount >= freeClaims : false;
+  const slippageBps = useMemo(() => parseSlippageBps(slippage), [slippage]);
   const freeClaimsRemaining = useMemo(() => {
     if (claimCount === null) return null;
     const remaining = freeClaims - claimCount;
@@ -595,13 +611,23 @@ export default function HomePage() {
       }
     }
     try {
+      if (slippageBps === null) {
+        setStatus({ tone: "bad", message: "Enter a valid slippage tolerance between 0 and 100%." });
+        return;
+      }
+      if (!buyQuote) {
+        setStatus({ tone: "bad", message: "Unable to calculate output for that amount." });
+        return;
+      }
+      const minOut = buyQuote - (buyQuote * slippageBps) / 10000n;
+      const minOutSafe = minOut > 0n ? minOut : 1n;
       setTrading(true);
       setStatus({ tone: "info", message: "Submitting buy transaction…" });
       const hash = await writeContract(wagmiConfig, {
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: DEMO_ABI,
         functionName: "buyDemo",
-        args: [],
+        args: [minOutSafe],
         account: account as `0x${string}`,
         value: amountIn,
         chainId: CHAIN_ID,
@@ -715,13 +741,23 @@ export default function HomePage() {
       }
     }
     try {
+      if (slippageBps === null) {
+        setStatus({ tone: "bad", message: "Enter a valid slippage tolerance between 0 and 100%." });
+        return;
+      }
+      if (!sellQuote) {
+        setStatus({ tone: "bad", message: "Unable to calculate output for that amount." });
+        return;
+      }
+      const minOut = sellQuote - (sellQuote * slippageBps) / 10000n;
+      const minOutSafe = minOut > 0n ? minOut : 1n;
       setTrading(true);
       setStatus({ tone: "info", message: "Submitting sell transaction…" });
       const hash = await writeContract(wagmiConfig, {
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: DEMO_ABI,
         functionName: "sellDemo",
-        args: [amountIn],
+        args: [amountIn, minOutSafe],
         account: account as `0x${string}`,
         chainId: CHAIN_ID,
       });
@@ -802,6 +838,20 @@ export default function HomePage() {
       return null;
     }
   }, [reserveEth, reserveDemo, sellDemoAmount, poolFunded]);
+
+  const buyMinOut = useMemo(() => {
+    if (!buyQuote || slippageBps === null) return null;
+    const buffer = (buyQuote * slippageBps) / 10000n;
+    const out = buyQuote - buffer;
+    return out > 0n ? out : 1n;
+  }, [buyQuote, slippageBps]);
+
+  const sellMinOut = useMemo(() => {
+    if (!sellQuote || slippageBps === null) return null;
+    const buffer = (sellQuote * slippageBps) / 10000n;
+    const out = sellQuote - buffer;
+    return out > 0n ? out : 1n;
+  }, [sellQuote, slippageBps]);
 
   const claimDisabledReason = useMemo(() => {
     if (!account) return "Connect your wallet to claim.";
@@ -982,12 +1032,48 @@ export default function HomePage() {
             </div>
           </div>
 
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Slippage tolerance</p>
+                <p className="text-xs text-slate-400">
+                  Applied to both buys and sells; swap reverts if output is lower.
+                </p>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                {slippageBps !== null ? `${(Number(slippageBps) / 100).toFixed(2)}%` : "Invalid"}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <input
+                value={slippage}
+                onChange={(e) => setSlippage(e.target.value)}
+                placeholder="1.0"
+                className="w-full flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+              />
+              <div className="space-y-1 text-xs text-slate-300">
+                <p>
+                  Min buy out: {buyMinOut ? `${formatToken(buyMinOut)} DEMO` : "—"}
+                </p>
+                <p>
+                  Min sell out: {sellMinOut ? `${formatToken(sellMinOut)} ETH` : "—"}
+                </p>
+              </div>
+            </div>
+            {slippageBps === null && (
+              <p className="mt-2 text-xs text-amber-200">
+                Enter a percentage between 0 and 100 with up to two decimals.
+              </p>
+            )}
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-100">Buy DEMO with ETH</p>
                 <span className="text-xs text-slate-400">
-                  You get {buyQuote ? `${formatToken(buyQuote)} DEMO` : "—"}
+                  You get {buyQuote ? `${formatToken(buyQuote)} DEMO` : "—"}{" "}
+                  {buyMinOut ? `(min ${formatToken(buyMinOut)} DEMO)` : ""}
                 </span>
               </div>
               <div className="mt-3 space-y-2">
@@ -997,7 +1083,9 @@ export default function HomePage() {
                   placeholder="0.01"
                   className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
                 />
-                <p className="text-xs text-slate-400">Enter ETH to spend. Slippage-free curve (no fee).</p>
+                <p className="text-xs text-slate-400">
+                  Enter ETH to spend. Constant-product curve (no fee); min received uses your slippage tolerance.
+                </p>
                 <button
                   onClick={handleBuy}
                   disabled={
@@ -1005,6 +1093,8 @@ export default function HomePage() {
                     !account ||
                     !poolFunded ||
                     !poolHasDemo ||
+                    slippageBps === null ||
+                    !buyQuote ||
                     chain?.id !== CHAIN_ID ||
                     !buyEthAmount
                   }
@@ -1019,7 +1109,8 @@ export default function HomePage() {
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-100">Sell DEMO for ETH</p>
                 <span className="text-xs text-slate-400">
-                  You get {sellQuote ? `${formatToken(sellQuote)} ETH` : "—"}
+                  You get {sellQuote ? `${formatToken(sellQuote)} ETH` : "—"}{" "}
+                  {sellMinOut ? `(min ${formatToken(sellMinOut)} ETH)` : ""}
                 </span>
               </div>
               <div className="mt-3 space-y-2">
@@ -1040,6 +1131,8 @@ export default function HomePage() {
                     !account ||
                     !poolFunded ||
                     reserveEth === 0n ||
+                    slippageBps === null ||
+                    !sellQuote ||
                     chain?.id !== CHAIN_ID ||
                     !sellDemoAmount
                   }

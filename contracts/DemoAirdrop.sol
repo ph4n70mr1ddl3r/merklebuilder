@@ -252,13 +252,26 @@ contract DemoAirdrop {
     }
 
     // --- Constant Product Market Maker (no LP tokens, contract-owned liquidity) ---
-    function buyDemo() external payable nonReentrant returns (uint256 amountOut) {
-        uint256 amountIn = msg.value;
+    function previewBuy(uint256 amountIn) public view returns (uint256 amountOut) {
         require(amountIn > 0, "DEMO: zero ETH in");
         require(reserveDEMO > 0, "DEMO: no DEMO liquidity");
         // x * y = k ; dy = (amountIn * reserveDEMO) / (reserveETH + amountIn)
         amountOut = (amountIn * reserveDEMO) / (reserveETH + amountIn);
         require(amountOut > 0 && amountOut <= reserveDEMO, "DEMO: insufficient output");
+    }
+
+    function previewSell(uint256 amountIn) public view returns (uint256 amountOut) {
+        require(amountIn > 0, "DEMO: zero DEMO in");
+        require(reserveETH > 0, "DEMO: no ETH liquidity");
+        // x * y = k ; dy = (amountIn * reserveETH) / (reserveDEMO + amountIn)
+        amountOut = (amountIn * reserveETH) / (reserveDEMO + amountIn);
+        require(amountOut > 0 && amountOut <= reserveETH, "DEMO: insufficient output");
+    }
+
+    function buyDemo(uint256 minAmountOut) external payable nonReentrant returns (uint256 amountOut) {
+        uint256 amountIn = msg.value;
+        amountOut = previewBuy(amountIn);
+        require(amountOut >= minAmountOut, "DEMO: slippage");
 
         reserveETH += amountIn;
         reserveDEMO -= amountOut;
@@ -267,16 +280,11 @@ contract DemoAirdrop {
         emit Swap(msg.sender, true, amountIn, amountOut, reserveETH, reserveDEMO);
     }
 
-    function sellDemo(uint256 amountIn) external nonReentrant returns (uint256 amountOut) {
-        require(amountIn > 0, "DEMO: zero DEMO in");
-        require(reserveETH > 0, "DEMO: no ETH liquidity");
-
-        // User must approve before calling; transfer in first.
+    function sellDemo(uint256 amountIn, uint256 minAmountOut) external nonReentrant returns (uint256 amountOut) {
+        amountOut = previewSell(amountIn);
+        require(amountOut >= minAmountOut, "DEMO: slippage");
+        // Pull tokens in before updating reserves/paying ETH out.
         _transfer(msg.sender, address(this), amountIn);
-
-        // x * y = k ; dy = (amountIn * reserveETH) / (reserveDEMO + amountIn)
-        amountOut = (amountIn * reserveETH) / (reserveDEMO + amountIn);
-        require(amountOut > 0 && amountOut <= reserveETH, "DEMO: insufficient output");
 
         reserveDEMO += amountIn;
         reserveETH -= amountOut;
