@@ -85,6 +85,7 @@ describe('validators', () => {
                 NEXT_PUBLIC_CONTRACT_ADDRESS: '0x20E6EaD47195aBE822B6414F507df0EA1876EA34',
                 NEXT_PUBLIC_CHAIN_ID: '11155111',
                 NEXT_PUBLIC_CHAIN_NAME: 'Sepolia',
+                NEXT_PUBLIC_RPC_URL: 'https://1rpc.io/sepolia',
             });
             expect(result.success).toBe(true);
         });
@@ -95,6 +96,7 @@ describe('validators', () => {
                 NEXT_PUBLIC_CONTRACT_ADDRESS: '0x20E6EaD47195aBE822B6414F507df0EA1876EA34',
                 NEXT_PUBLIC_CHAIN_ID: '11155111',
                 NEXT_PUBLIC_CHAIN_NAME: 'Sepolia',
+                NEXT_PUBLIC_RPC_URL: 'https://1rpc.io/sepolia',
             });
             expect(result.success).toBe(false);
         });
@@ -105,6 +107,7 @@ describe('validators', () => {
                 NEXT_PUBLIC_CONTRACT_ADDRESS: '0x123',
                 NEXT_PUBLIC_CHAIN_ID: '11155111',
                 NEXT_PUBLIC_CHAIN_NAME: 'Sepolia',
+                NEXT_PUBLIC_RPC_URL: 'https://1rpc.io/sepolia',
             });
             expect(result.success).toBe(false);
         });

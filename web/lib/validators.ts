@@ -8,6 +8,7 @@ export const envSchema = z.object({
         .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid contract address format"),
     NEXT_PUBLIC_CHAIN_ID: z.string().regex(/^\d+$/, "Chain ID must be a number"),
     NEXT_PUBLIC_CHAIN_NAME: z.string().min(1, "Chain name is required"),
+    NEXT_PUBLIC_RPC_URL: z.string().url("Invalid RPC URL format"),
 });
 
 export const addressSchema = z
