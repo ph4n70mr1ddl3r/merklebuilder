@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { formatEther, parseEther } from 'viem';
 import { formatToken } from '../../lib/format';
+import { Tooltip } from './Tooltip';
 
 type TradeMode = 'buy-exact-demo' | 'sell-exact-demo' | 'spend-exact-eth' | 'receive-exact-eth';
 
@@ -433,7 +434,9 @@ export function EnhancedMarketPanel({
                     <div className="flex items-center gap-2">
                       <span>{priceImpact > 10 ? '⚠️' : priceImpact > 5 ? '⚡' : 'ℹ️'}</span>
                       <span>
-                        Price Impact: <strong>{priceImpact.toFixed(2)}%</strong>
+                        <Tooltip content="Price impact shows how much your trade will move the market price. Large trades relative to pool size cause higher impact and worse execution prices." position="bottom">
+                          <span className="border-b border-dotted border-current">Price Impact</span>
+                        </Tooltip>: <strong>{priceImpact.toFixed(2)}%</strong>
                         {priceImpact > 10 && ' — High impact! Consider a smaller trade.'}
                         {priceImpact > 5 && priceImpact <= 10 && ' — Moderate impact'}
                       </span>
@@ -445,7 +448,9 @@ export function EnhancedMarketPanel({
               {/* Slippage */}
               <div>
                 <label htmlFor="slippage" className="block text-sm font-semibold text-slate-200 mb-2">
-                  Slippage Tolerance (%)
+                  <Tooltip content="Maximum acceptable price change between submission and execution. Higher slippage = more likely to execute, but potentially worse price.">
+                    <span className="border-b border-dotted border-slate-400">Slippage Tolerance</span>
+                  </Tooltip> (%)
                 </label>
                 <div className="flex gap-2">
                   {['0.5', '1.0', '2.0'].map((preset) => (
@@ -491,7 +496,11 @@ export function EnhancedMarketPanel({
 
           {/* Pool Stats */}
           <div className="rounded-xl border border-white/10 bg-slate-900/70 p-5">
-            <p className="text-sm font-semibold text-slate-200 mb-4">Pool Statistics</p>
+            <p className="text-sm font-semibold text-slate-200 mb-4">
+              <Tooltip content="Liquidity pool reserves that back all trades. Larger reserves = less price impact per trade." position="bottom">
+                <span className="border-b border-dotted border-slate-400">Pool Statistics</span>
+              </Tooltip>
+            </p>
             <div className="space-y-3">
               <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                 <p className="text-xs text-slate-400 mb-1">ETH Reserve</p>
@@ -514,7 +523,11 @@ export function EnhancedMarketPanel({
             <div className="mt-4 rounded-lg border border-cyan-400/30 bg-cyan-400/5 p-3 text-xs text-slate-300">
               <p className="font-semibold text-cyan-300 mb-1">💡 How it works</p>
               <p>
-                This constant-product AMM (x × y = k) automatically calculates prices based on pool reserves. Choose your preferred trade type above.
+                This{' '}
+                <Tooltip content="Automated Market Maker that uses the formula x × y = k, where x and y are the token reserves and k is a constant. Prices are determined automatically by the ratio of reserves." position="top">
+                  <span className="border-b border-dotted border-cyan-400 text-cyan-300 cursor-help">constant-product AMM</span>
+                </Tooltip>{' '}
+                automatically calculates prices based on pool reserves. Choose your preferred trade type above.
               </p>
             </div>
           </div>

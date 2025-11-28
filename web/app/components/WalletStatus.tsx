@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { formatToken, shorten } from '../../lib/format';
 
 type WalletStatusProps = {
@@ -21,6 +22,18 @@ export function WalletStatus({
   onSwitchWallet,
 }: WalletStatusProps) {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(account);
+      setCopied(true);
+      toast.success('Address copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
 
   return (
     <div className="fixed top-4 right-4 z-50">
@@ -33,10 +46,17 @@ export function WalletStatus({
             <span className="text-xs text-slate-400">{chainName}</span>
           </div>
 
-          {/* Address */}
-          <div className="rounded-lg bg-white/5 px-2 py-1">
+          {/* Address with copy */}
+          <button
+            onClick={copyAddress}
+            className="group flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 hover:bg-white/10 transition"
+            title="Click to copy address"
+          >
             <span className="font-mono text-sm text-slate-200">{shorten(account)}</span>
-          </div>
+            <span className="text-slate-400 group-hover:text-slate-200 transition">
+              {copied ? '✓' : '⧉'}
+            </span>
+          </button>
 
           {/* Balances */}
           <div className="flex items-center gap-2 text-sm">
@@ -101,8 +121,15 @@ export function WalletStatus({
             </div>
 
             {/* Address */}
-            <div className="rounded-lg bg-white/5 px-2 py-1 mb-3">
-              <span className="font-mono text-sm text-slate-200">{shorten(account)}</span>
+            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1 mb-3">
+              <span className="font-mono text-sm text-slate-200 flex-1">{shorten(account)}</span>
+              <button
+                onClick={copyAddress}
+                className="text-slate-400 hover:text-slate-200 transition text-xs"
+                title="Copy address"
+              >
+                📋
+              </button>
             </div>
 
             {/* Balances */}

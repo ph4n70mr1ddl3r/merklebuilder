@@ -5,6 +5,7 @@ import { ZeroAddress, getAddress, isAddress } from "ethers";
 import { parseEther, formatEther } from "viem";
 import { toast } from "sonner";
 import { API_BASE, CHAIN_ID, CHAIN_NAME, CONTRACT_ADDRESS, DEMO_ABI, ProofResponse } from "../lib/airdrop";
+import { fireConfettiBurst } from "../lib/confetti";
 import { useAccount, useConnect, useDisconnect, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract, readContract, sendTransaction } from "wagmi/actions";
 import { wagmiConfig } from "../lib/wagmi";
@@ -92,6 +93,7 @@ export default function HomePage() {
   const [donating, setDonating] = useState(false);
   const [userIntent, setUserIntent] = useState<UserIntent | null>(null);
   const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
+  const [inviteFromUrl, setInviteFromUrl] = useState<string | null>(null);
 
   const invitesRequired =
     claimCount !== null ? claimCount >= freeClaims : false;
@@ -420,6 +422,24 @@ export default function HomePage() {
     }
   }, []);
 
+  // Parse URL params for invite links (e.g., ?invite=0x123...)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const inviteParam = params.get("invite");
+      if (inviteParam && isAddress(inviteParam)) {
+        const normalized = getAddress(inviteParam);
+        setInviteFromUrl(normalized);
+        toast.info(`You've been invited by ${shorten(normalized)}!`);
+        // Auto-start claim flow if user has an invite link
+        setUserIntent("claim");
+      }
+    } catch (err) {
+      console.error("Failed to parse URL params", err);
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -535,9 +555,10 @@ export default function HomePage() {
         await publicClient.waitForTransactionReceipt({ hash });
       }
       
-      toast.success("Claim confirmed! DEMO minted.", { id: toastId });
+      toast.success("🎉 Claim confirmed! DEMO minted.", { id: toastId });
       setStatus({ tone: "good", message: "Claim confirmed! DEMO minted." });
       setHasClaimed(true);
+      fireConfettiBurst(); // Celebrate!
       await refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
@@ -1188,6 +1209,23 @@ export default function HomePage() {
     }
   };
 
+  const copyInviteLink = async () => {
+    if (!account) return;
+    try {
+      const baseUrl = window.location.origin + window.location.pathname;
+      const inviteUrl = `${baseUrl}?invite=${account}`;
+      await navigator.clipboard?.writeText(inviteUrl);
+      toast.success("Invite link copied! Share it with friends.");
+      setCopiedKey("invite-link");
+      setTimeout(() => {
+        setCopiedKey((prev) => (prev === "invite-link" ? null : prev));
+      }, 1200);
+    } catch (err) {
+      console.error("Copy invite link failed", err);
+      toast.error("Failed to copy link");
+    }
+  };
+
   const heroStats = {
     claimCountText: claimCount !== null ? `${claimCount} claimed` : "Checking…",
     freeClaimsText:
@@ -1248,6 +1286,7 @@ export default function HomePage() {
           claiming={claiming}
           proof={proof}
           invitedBy={invitedBy}
+          inviteFromUrl={inviteFromUrl}
           invitesRequired={invitesRequired}
           poolFunded={poolFunded}
           onCheckEligibility={() => refreshProof()}
@@ -1274,6 +1313,7 @@ export default function HomePage() {
           refreshOnChain={refreshOnChain}
           setShowProviderModal={setShowProviderModal}
           copyToClipboard={copyToClipboard}
+          copyInviteLink={copyInviteLink}
           copiedKey={copiedKey}
           revokingSlot={revokingSlot}
           revokeInvite={revokeInvite}
