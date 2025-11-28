@@ -130,6 +130,46 @@ export function EnhancedMarketPanel({
     }
   }, [tradeMode, inputAmount, poolFunded, poolHasDemo, reserveEth, reserveDemo, demoBalance]);
 
+  // Calculate price impact
+  const priceImpact = useMemo(() => {
+    if (!outputAmount || !poolFunded || !poolHasDemo || !inputAmount) return null;
+    
+    try {
+      const input = parseEther(inputAmount);
+      if (input <= 0n) return null;
+
+      const isBuying = tradeMode === 'buy-exact-demo' || tradeMode === 'spend-exact-eth';
+      
+      // Current spot price (ETH per DEMO)
+      const spotPrice = Number(formatEther(reserveEth)) / Number(formatEther(reserveDemo));
+      
+      let effectivePrice: number;
+      if (isBuying) {
+        // Buying DEMO: ETH spent / DEMO received
+        if (tradeMode === 'spend-exact-eth') {
+          effectivePrice = Number(formatEther(input)) / Number(formatEther(outputAmount));
+        } else {
+          // buy-exact-demo: ETH needed (output) / DEMO wanted (input)
+          effectivePrice = Number(formatEther(outputAmount)) / Number(formatEther(input));
+        }
+      } else {
+        // Selling DEMO: DEMO spent / ETH received
+        if (tradeMode === 'sell-exact-demo') {
+          effectivePrice = Number(formatEther(outputAmount)) / Number(formatEther(input));
+        } else {
+          // receive-exact-eth: ETH wanted (input) / DEMO to sell (output)
+          effectivePrice = Number(formatEther(input)) / Number(formatEther(outputAmount));
+        }
+      }
+
+      // Price impact = (effective - spot) / spot * 100
+      const impact = ((effectivePrice - spotPrice) / spotPrice) * 100;
+      return Math.abs(impact);
+    } catch {
+      return null;
+    }
+  }, [tradeMode, inputAmount, outputAmount, poolFunded, poolHasDemo, reserveEth, reserveDemo]);
+
   const handleTrade = async () => {
     if (!account) {
       setShowProviderModal(true);
@@ -380,6 +420,25 @@ export function EnhancedMarketPanel({
                       ? formatToken(outputAmount - (outputAmount * slippageBps) / 10000n)
                       : formatToken(outputAmount + (outputAmount * slippageBps) / 10000n)}
                   </p>
+                )}
+                {/* Price Impact Warning */}
+                {priceImpact !== null && priceImpact > 1 && (
+                  <div className={`mt-3 rounded-lg p-2 text-xs ${
+                    priceImpact > 10 
+                      ? 'bg-red-400/20 border border-red-400/40 text-red-300' 
+                      : priceImpact > 5 
+                        ? 'bg-amber-400/20 border border-amber-400/40 text-amber-300'
+                        : 'bg-slate-400/10 border border-slate-400/20 text-slate-300'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span>{priceImpact > 10 ? '⚠️' : priceImpact > 5 ? '⚡' : 'ℹ️'}</span>
+                      <span>
+                        Price Impact: <strong>{priceImpact.toFixed(2)}%</strong>
+                        {priceImpact > 10 && ' — High impact! Consider a smaller trade.'}
+                        {priceImpact > 5 && priceImpact <= 10 && ' — Moderate impact'}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
 

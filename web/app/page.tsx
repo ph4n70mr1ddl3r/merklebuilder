@@ -235,13 +235,30 @@ export default function HomePage() {
   );
 
   const refreshProof = useCallback(
-    async (addressOverride?: string) => {
+    async (addressOverride?: string, skipCache = false) => {
       const target = addressOverride || account;
       if (!target) {
         toast.info("Connect your wallet to fetch proof.");
         setStatus({ tone: "info", message: "Connect your wallet to fetch proof." });
         return;
       }
+
+      // Try to load from cache first (unless skipCache is true)
+      if (!skipCache) {
+        try {
+          const cached = localStorage.getItem(`demo-proof-${getAddress(target).toLowerCase()}`);
+          if (cached) {
+            const data: ProofResponse = JSON.parse(cached);
+            setProof(data);
+            setHasCheckedEligibility(true);
+            toast.success("Loaded cached eligibility data");
+            // Still refresh on-chain state in background
+            refreshOnChain(target);
+            return;
+          }
+        } catch { }
+      }
+
       setCheckingProof(true);
       setProof(null);
       setHasCheckedEligibility(false);
@@ -253,6 +270,10 @@ export default function HomePage() {
           setStatus({ tone: "bad", message: `Not in airdrop list (${text || res.status}).` });
           setProof(null);
           setHasCheckedEligibility(true);
+          // Cache negative result too (not eligible)
+          try {
+            localStorage.setItem(`demo-proof-${getAddress(target).toLowerCase()}`, JSON.stringify(null));
+          } catch { }
           return;
         }
         const data: ProofResponse = await res.json();
@@ -271,6 +292,11 @@ export default function HomePage() {
 
         setProof(data);
         setHasCheckedEligibility(true);
+
+        // Cache proof in localStorage
+        try {
+          localStorage.setItem(`demo-proof-${normalizedTarget.toLowerCase()}`, JSON.stringify(data));
+        } catch { }
 
         let claimed = hasClaimed;
         let inviterAddr: string | null = invitedBy;
@@ -369,6 +395,11 @@ export default function HomePage() {
 
   useEffect(() => {
     refreshReserves(account);
+    // Auto-refresh reserves every 15 seconds
+    const interval = setInterval(() => {
+      refreshReserves(account);
+    }, 15000);
+    return () => clearInterval(interval);
   }, [account, refreshReserves]);
 
   useEffect(() => {
