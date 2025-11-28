@@ -60,6 +60,11 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400;
   }
   
+  /* Improve color contrast for accessibility */
+  .text-slate-400 {
+    @apply text-slate-300;
+  }
+  
   .animate-shimmer {
     animation: shimmer 2s linear infinite;
     background: linear-gradient(

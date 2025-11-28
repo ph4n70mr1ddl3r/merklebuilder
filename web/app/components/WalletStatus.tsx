@@ -49,14 +49,16 @@ export function WalletStatus({
           {/* Address with copy */}
           <button
             onClick={copyAddress}
-            className="group flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 hover:bg-white/10 transition"
+            className="group flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 hover:bg-white/10 transition focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900"
             title="Click to copy address"
+            aria-label="Copy wallet address to clipboard"
           >
             <span className="font-mono text-sm text-slate-200">{shorten(account)}</span>
-            <span className="text-slate-400 group-hover:text-slate-200 transition">
+            <span className="text-slate-400 group-hover:text-slate-200 transition" aria-hidden="true">
               {copied ? '✓' : '⧉'}
             </span>
           </button>
+          {copied && <span className="sr-only" role="status">Address copied to clipboard</span>}
 
           {/* Balances */}
           <div className="flex items-center gap-2 text-sm">
@@ -74,17 +76,19 @@ export function WalletStatus({
           <div className="flex items-center gap-1">
             <button
               onClick={onSwitchWallet}
-              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10"
+              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900"
               title="Switch wallet"
+              aria-label="Switch to a different wallet"
             >
-              ↔
+              <span aria-hidden="true">↔</span>
             </button>
             <button
               onClick={onDisconnect}
-              className="rounded-lg border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-medium text-red-300 transition hover:bg-red-400/20"
+              className="rounded-lg border border-red-400/30 bg-red-400/10 px-2 py-1 text-xs font-medium text-red-300 transition hover:bg-red-400/20 focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-900"
               title="Disconnect"
+              aria-label="Disconnect wallet"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           </div>
         </div>
@@ -96,11 +100,13 @@ export function WalletStatus({
         {!expanded && (
           <button
             onClick={() => setExpanded(true)}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/95 backdrop-blur-sm shadow-xl px-3 py-2"
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/95 backdrop-blur-sm shadow-xl px-3 py-2 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+            aria-label="Expand wallet status"
+            aria-expanded="false"
           >
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" aria-hidden="true" />
             <span className="font-mono text-xs text-slate-200">{shorten(account)}</span>
-            <span className="text-xs text-slate-400">▼</span>
+            <span className="text-xs text-slate-400" aria-hidden="true">▼</span>
           </button>
         )}
 
@@ -114,9 +120,11 @@ export function WalletStatus({
               </div>
               <button
                 onClick={() => setExpanded(false)}
-                className="text-slate-400 hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-200 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900 rounded p-1"
+                aria-label="Collapse wallet status"
+                aria-expanded="true"
               >
-                ▲
+                <span aria-hidden="true">▲</span>
               </button>
             </div>
 
@@ -125,11 +133,13 @@ export function WalletStatus({
               <span className="font-mono text-sm text-slate-200 flex-1">{shorten(account)}</span>
               <button
                 onClick={copyAddress}
-                className="text-slate-400 hover:text-slate-200 transition text-xs"
+                className="text-slate-400 hover:text-slate-200 transition text-xs focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900 rounded p-1"
                 title="Copy address"
+                aria-label="Copy wallet address to clipboard"
               >
-                📋
+                <span aria-hidden="true">📋</span>
               </button>
+              {copied && <span className="sr-only" role="status">Address copied to clipboard</span>}
             </div>
 
             {/* Balances */}
@@ -148,13 +158,15 @@ export function WalletStatus({
             <div className="flex gap-2">
               <button
                 onClick={onSwitchWallet}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/10"
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/10 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                aria-label="Switch to a different wallet"
               >
                 Switch Wallet
               </button>
               <button
                 onClick={onDisconnect}
-                className="flex-1 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-400/20"
+                className="flex-1 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-400/20 focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                aria-label="Disconnect wallet"
               >
                 Disconnect
               </button>

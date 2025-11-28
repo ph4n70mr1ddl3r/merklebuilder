@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import clsx from "clsx";
 import { InfoRow } from "./Primitives";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type InviteSlot = { invitee: string | null; used: boolean };
 
@@ -48,6 +50,19 @@ export function InvitesPanel({
   inviting,
   hasEmptySlot,
 }: InvitesPanelProps) {
+  const [confirmRevoke, setConfirmRevoke] = useState<{ show: boolean; slotIndex: number; address: string } | null>(null);
+
+  const handleRevokeClick = (slotIndex: number, address: string) => {
+    setConfirmRevoke({ show: true, slotIndex, address });
+  };
+
+  const handleConfirmRevoke = () => {
+    if (confirmRevoke) {
+      revokeInvite(confirmRevoke.slotIndex);
+      setConfirmRevoke(null);
+    }
+  };
+
   return (
     <section
       id="invites"
@@ -187,9 +202,10 @@ export function InvitesPanel({
                             </button>
                             {isPending && (
                               <button
-                                onClick={() => revokeInvite(idx)}
+                                onClick={() => handleRevokeClick(idx, slot.invitee!)}
                                 disabled={revokingSlot === idx}
-                                className="inline-flex items-center gap-1 rounded-md border border-amber-300/50 bg-amber-300/10 px-2 py-1 text-[11px] font-semibold text-amber-100 hover:-translate-y-0.5 disabled:opacity-50"
+                                className="inline-flex items-center gap-1 rounded-md border border-amber-300/50 bg-amber-300/10 px-2 py-1 text-[11px] font-semibold text-amber-100 hover:-translate-y-0.5 disabled:opacity-50 focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                aria-label={`Revoke invitation for ${slot.invitee?.slice(0, 10)}...`}
                               >
                                 {revokingSlot === idx ? "Revoking…" : "Revoke"}
                               </button>
@@ -233,6 +249,29 @@ export function InvitesPanel({
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog */}
+      {confirmRevoke && (
+        <ConfirmDialog
+          open={confirmRevoke.show}
+          title="Revoke Invitation?"
+          description={
+            <div>
+              <p>You are about to revoke the invitation for:</p>
+              <p className="font-mono text-amber-300 mt-2">{confirmRevoke.address.slice(0, 10)}...{confirmRevoke.address.slice(-8)}</p>
+              <p className="mt-2 text-slate-400 text-xs">
+                This will free slot #{confirmRevoke.slotIndex + 1} so you can invite someone else. 
+                This action cannot be undone if they haven&apos;t claimed yet.
+              </p>
+            </div>
+          }
+          confirmText="Yes, Revoke"
+          cancelText="Cancel"
+          onConfirm={handleConfirmRevoke}
+          onCancel={() => setConfirmRevoke(null)}
+          variant="warning"
+        />
+      )}
     </section>
   );
 }

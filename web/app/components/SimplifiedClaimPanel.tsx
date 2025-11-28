@@ -116,7 +116,8 @@ export function SimplifiedClaimPanel({
                 </p>
                 <button
                   onClick={() => setShowProviderModal(true)}
-                  className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-6 py-3 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5"
+                  className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-6 py-3 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                  aria-label="Connect wallet to check eligibility"
                 >
                   Connect Wallet
                 </button>

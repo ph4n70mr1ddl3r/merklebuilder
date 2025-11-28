@@ -389,14 +389,25 @@ export function EnhancedMarketPanel({
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
                     placeholder="0.0"
-                    className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 pr-16 text-lg text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                    className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 pr-32 text-lg text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    aria-label="Trade amount input"
                   />
+                  {(tradeMode === 'sell-exact-demo' || tradeMode === 'receive-exact-eth') && demoBalance > 0n && (
+                    <button
+                      type="button"
+                      onClick={() => setInputAmount(formatEther(demoBalance))}
+                      className="absolute right-16 top-1/2 -translate-y-1/2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition px-2 py-1 rounded hover:bg-emerald-400/10"
+                      aria-label="Set to maximum DEMO balance"
+                    >
+                      MAX
+                    </button>
+                  )}
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-white/10 px-2 py-1 text-xs font-semibold text-slate-300">
                     {tradeMode.includes('demo') && tradeMode !== 'spend-exact-eth' ? 'DEMO' : 'ETH'}
                   </div>
                 </div>
                 {tradeMode === 'sell-exact-demo' || tradeMode === 'receive-exact-eth' ? (
-                  <p className="mt-1 text-xs text-slate-400">Balance: {formatToken(demoBalance)} DEMO</p>
+                  <p className="mt-1 text-xs text-slate-300">Balance: {formatToken(demoBalance)} DEMO</p>
                 ) : null}
               </div>
 

@@ -45,29 +45,30 @@ export function Hero({
             <div className="mt-6 flex items-center justify-center">
         <button
           onClick={onPrimary}
-          className="rounded-full border border-emerald-400/70 bg-gradient-to-r from-emerald-400 to-emerald-500 px-8 py-3 text-lg font-bold text-emerald-950 shadow-lg shadow-emerald-500/40 transition hover:scale-105 hover:-translate-y-1"
+          className="rounded-full border border-emerald-400/70 bg-gradient-to-r from-emerald-400 to-emerald-500 px-8 py-3 text-lg font-bold text-emerald-950 shadow-lg shadow-emerald-500/40 transition hover:scale-105 hover:-translate-y-1 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900 min-h-[44px]"
+          aria-label="Get started with claiming DEMO tokens"
         >
           🎁 Get Started
         </button>
       </div>
 
       {/* Live Stats Ticker */}
-      <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
         <div className="glass rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Total Claims</p>
+          <p className="text-xs uppercase tracking-wider text-slate-300">Total Claims</p>
           <p className="mt-1 text-2xl font-bold text-white">{stats.claimCountText}</p>
         </div>
         <div className="glass rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Free Claims Left</p>
+          <p className="text-xs uppercase tracking-wider text-slate-300">Free Claims Left</p>
           <p className="mt-1 text-2xl font-bold text-emerald-400">{stats.freeClaimsText.split(' ')[0]}</p>
         </div>
         <div className="glass rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Current Price</p>
+          <p className="text-xs uppercase tracking-wider text-slate-300">Current Price</p>
           <p className="mt-1 text-2xl font-bold text-cyan-400">{stats.marketText.split(' ')[0]}</p>
         </div>
         <div className="glass rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Liquidity</p>
-          <p className="mt-1 text-sm font-mono text-slate-300">{stats.reserveText.split('·')[0]}</p>
+          <p className="text-xs uppercase tracking-wider text-slate-300">Liquidity</p>
+          <p className="mt-1 text-sm font-mono text-slate-300 truncate">{stats.reserveText.split('·')[0]}</p>
         </div>
       </div>
     </header>

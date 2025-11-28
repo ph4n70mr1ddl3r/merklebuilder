@@ -6,6 +6,7 @@ import { parseEther, formatEther } from "viem";
 import { toast } from "sonner";
 import { CHAIN_ID, CHAIN_NAME, CONTRACT_ADDRESS, DEMO_ABI, API_BASE } from "../lib/airdrop";
 import { fireConfettiBurst } from "../lib/confetti";
+import { parseWeb3Error, getExplorerUrl } from "../lib/errors";
 import { useAccount, useConnect, useDisconnect, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract, readContract, sendTransaction } from "wagmi/actions";
 import { wagmiConfig } from "../lib/wagmi";
@@ -206,7 +207,7 @@ export default function HomePage() {
     
     try {
       setClaiming(true);
-      const toastId = toast.loading("Submitting claim transaction…");
+      const toastId = toast.loading("Step 1/2: Submitting claim transaction…");
       
       const hash = await writeContract(wagmiConfig, {
         address: CONTRACT_ADDRESS as `0x${string}`,
@@ -216,7 +217,20 @@ export default function HomePage() {
         account: account as `0x${string}`,
       });
       
-      toast.loading(`Tx sent: ${hash.slice(0, 10)}… waiting for confirmation.`, { id: toastId });
+      toast.loading(
+        <div className="flex flex-col gap-1">
+          <span>Step 2/2: Waiting for confirmation…</span>
+          <a 
+            href={getExplorerUrl(hash, CHAIN_ID)} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-cyan-400 hover:underline"
+          >
+            View on Explorer →
+          </a>
+        </div>, 
+        { id: toastId }
+      );
       
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash });
@@ -229,7 +243,13 @@ export default function HomePage() {
       await market.refreshReserves(account);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Claim failed.");
+      const friendlyError = parseWeb3Error(err);
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Claim failed</span>
+          <span className="text-sm">{friendlyError}</span>
+        </div>
+      );
     } finally {
       setClaiming(false);
     }
@@ -307,7 +327,13 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Failed to create invitation.");
+      const friendlyError = parseWeb3Error(err);
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Invitation failed</span>
+          <span className="text-sm">{friendlyError}</span>
+        </div>
+      );
     } finally {
       setInviting(false);
     }
@@ -346,7 +372,13 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Failed to revoke invitation.");
+      const friendlyError = parseWeb3Error(err);
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Revoke failed</span>
+          <span className="text-sm">{friendlyError}</span>
+        </div>
+      );
     } finally {
       setRevokingSlot(null);
     }
@@ -377,7 +409,13 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Buy failed.");
+      const friendlyError = parseWeb3Error(err);
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Buy failed</span>
+          <span className="text-sm">{friendlyError}</span>
+        </div>
+      );
     } finally {
       setTrading(false);
     }
@@ -406,7 +444,13 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Sell failed.");
+      const friendlyError = parseWeb3Error(err);
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Sell failed</span>
+          <span className="text-sm">{friendlyError}</span>
+        </div>
+      );
     } finally {
       setTrading(false);
     }
@@ -436,7 +480,13 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Buy failed.");
+      const friendlyError = parseWeb3Error(err);
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Buy failed</span>
+          <span className="text-sm">{friendlyError}</span>
+        </div>
+      );
     } finally {
       setTrading(false);
     }
@@ -466,7 +516,13 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message || "Sell failed.");
+      const friendlyError = parseWeb3Error(err);
+      toast.error(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">Sell failed</span>
+          <span className="text-sm">{friendlyError}</span>
+        </div>
+      );
     } finally {
       setTrading(false);
     }
@@ -477,7 +533,7 @@ export default function HomePage() {
     try {
       await navigator.clipboard?.writeText(value);
       setCopiedKey(key);
-      setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 1200);
+      setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 3000);
     } catch {}
   };
 
@@ -489,7 +545,7 @@ export default function HomePage() {
       await navigator.clipboard?.writeText(inviteUrl);
       toast.success("Invite link copied!");
       setCopiedKey("invite-link");
-      setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), 1200);
+      setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), 3000);
     } catch {
       toast.error("Failed to copy link");
     }
