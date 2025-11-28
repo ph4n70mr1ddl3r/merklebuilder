@@ -190,14 +190,13 @@ export function SimplifiedClaimPanel({
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => (window.location.hash = '#market-maker')}
+                    onClick={onSwitchToTrade}
                     className="rounded-lg bg-gradient-to-r from-purple-400 to-purple-500 px-6 py-3 font-semibold text-purple-950 shadow-lg shadow-purple-500/30 transition hover:-translate-y-0.5"
                   >
                     Buy DEMO Tokens
                   </button>
                   <button
-                    onClick={onCheckEligibility}
-                    disabled={checking}
+                    onClick={() => setShowProviderModal(true)}
                     className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5"
                   >
                     Try Another Wallet

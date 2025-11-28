@@ -18,6 +18,7 @@ import { PersonaSelector, UserIntent } from "./components/PersonaSelector";
 import { SimplifiedClaimPanel } from "./components/SimplifiedClaimPanel";
 import { SimplifiedBuyPanel } from "./components/SimplifiedBuyPanel";
 import { EnhancedMarketPanel } from "./components/EnhancedMarketPanel";
+import { WalletStatus } from "./components/WalletStatus";
 import { formatToken, shorten } from "../lib/format";
 import { addressSchema, amountSchema } from "../lib/validators";
 
@@ -81,6 +82,7 @@ export default function HomePage() {
   const [reserveEth, setReserveEth] = useState<bigint>(0n);
   const [reserveDemo, setReserveDemo] = useState<bigint>(0n);
   const [demoBalance, setDemoBalance] = useState<bigint>(0n);
+  const [ethBalance, setEthBalance] = useState<bigint>(0n);
   const [buyEthAmount, setBuyEthAmount] = useState("");
   const [sellDemoAmount, setSellDemoAmount] = useState("");
   const [slippage, setSlippage] = useState("1.0");
@@ -116,13 +118,14 @@ export default function HomePage() {
     setProof(null);
     setRecipient("");
     setDemoBalance(0n);
+    setEthBalance(0n);
   }, []);
 
   const refreshReserves = useCallback(
     async (addr?: string) => {
       const target = addr ?? account;
       try {
-        const [reserves, bal] = await Promise.all([
+        const [reserves, demoBal, ethBal] = await Promise.all([
           readContract(wagmiConfig, {
             address: CONTRACT_ADDRESS as `0x${string}`,
             abi: DEMO_ABI,
@@ -136,18 +139,24 @@ export default function HomePage() {
               args: [target as `0x${string}`],
             })
             : Promise.resolve(0n),
+          target && publicClient
+            ? publicClient.getBalance({ address: target as `0x${string}` })
+            : Promise.resolve(0n),
         ]);
         const tuple = reserves as readonly [bigint, bigint];
         setReserveEth(BigInt(tuple[0]));
         setReserveDemo(BigInt(tuple[1]));
-        if (typeof bal === "bigint") {
-          setDemoBalance(bal);
+        if (typeof demoBal === "bigint") {
+          setDemoBalance(demoBal);
+        }
+        if (typeof ethBal === "bigint") {
+          setEthBalance(ethBal);
         }
       } catch (err) {
         console.error(err);
       }
     },
-    [account]
+    [account, publicClient]
   );
 
   const refreshOnChain = useCallback(
@@ -1165,6 +1174,18 @@ export default function HomePage() {
       {/* Background Effects */}
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500 blur-[120px] opacity-20" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-emerald-500 blur-[120px] opacity-20" />
+
+      {/* Wallet Status Bar */}
+      {account && (
+        <WalletStatus
+          account={account}
+          ethBalance={ethBalance}
+          demoBalance={demoBalance}
+          chainName={CHAIN_NAME}
+          onDisconnect={disconnectWallet}
+          onSwitchWallet={() => setShowProviderModal(true)}
+        />
+      )}
 
       <Hero
         chainName={CHAIN_NAME}
