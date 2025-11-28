@@ -89,6 +89,7 @@ export default function HomePage() {
   const [buyEthAmount, setBuyEthAmount] = useState("");
   const [sellDemoAmount, setSellDemoAmount] = useState("");
   const [slippage, setSlippage] = useState("1.0");
+  const [activeTab, setActiveTab] = useState<"airdrop" | "invites" | "market">("airdrop");
   const [trading, setTrading] = useState(false);
   const [donateAmount, setDonateAmount] = useState("");
   const [donating, setDonating] = useState(false);
@@ -156,6 +157,12 @@ export default function HomePage() {
   useEffect(() => {
     refreshReserves(account);
   }, [account]);
+
+  const switchTab = (tab: "airdrop" | "invites" | "market") => {
+    setActiveTab(tab);
+    const anchor = document.getElementById("tab-root");
+    anchor?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const resetUi = () => {
     setClaimCount(null);
@@ -905,17 +912,38 @@ export default function HomePage() {
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500 blur-[120px] opacity-30" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-emerald-500 blur-[120px] opacity-25" />
 
-      <header className="relative mx-auto max-w-5xl px-6 pt-14 text-center">
+      <header className="relative mx-auto max-w-6xl px-6 pt-12 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200">
           <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.8)]" />
-          DEMO Merkle Airdrop · {CHAIN_NAME}
+          DEMO on {CHAIN_NAME} · Merkle drop + referrals + AMM
         </div>
         <h1 className="mt-6 text-4xl font-semibold tracking-tight md:text-5xl">
-          Claim your DEMO with proof and invites
+          Claim the drop, invite friends, and trade inside one hub
         </h1>
-        <p className="mt-3 text-base text-slate-300 md:text-lg">
-          Submit your claim and manage invitations once you&apos;re eligible.
+        <p className="mt-4 text-base text-slate-300 md:text-lg">
+          Three tracks, one flow: prove eligibility, branch invites, and swap against the contract-owned pool.
         </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-200">
+          <button
+            onClick={() => switchTab("airdrop")}
+            className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-4 py-2 font-semibold text-emerald-100 shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5"
+          >
+            Go to Airdrop
+          </button>
+          <button
+            onClick={() => switchTab("invites")}
+            className="rounded-full border border-cyan-400/50 bg-cyan-400/10 px-4 py-2 font-semibold text-cyan-100 shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5"
+          >
+            Go to Invites
+          </button>
+          <button
+            onClick={() => switchTab("market")}
+            className="rounded-full border border-white/15 bg-white/10 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5"
+          >
+            Go to Market Maker
+          </button>
+        </div>
+
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-300">
           <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
             Contract:{" "}
@@ -932,68 +960,183 @@ export default function HomePage() {
             <span className="break-all font-mono text-emerald-300">{API_BASE}</span>
           </div>
         </div>
+
+        <div className="mt-6 grid gap-3 text-left text-sm text-slate-200 md:grid-cols-3">
+          <div className="rounded-xl border border-emerald-300/40 bg-emerald-400/10 p-4 shadow-lg shadow-emerald-500/15">
+            <p className="text-xs uppercase tracking-wide text-emerald-200">Merkle Airdrop</p>
+            <p className="mt-1 text-lg font-semibold text-emerald-50">
+              {claimCount !== null ? `${claimCount} claimed` : "Checking…"}
+            </p>
+            <p className="text-xs text-emerald-100">
+              {freeClaimsRemaining !== null ? `${freeClaimsRemaining} free claims left before invites lock in.` : "Fetch your proof to see your lane."}
+            </p>
+          </div>
+          <div className="rounded-xl border border-cyan-300/40 bg-cyan-400/10 p-4 shadow-lg shadow-cyan-500/15">
+            <p className="text-xs uppercase tracking-wide text-cyan-200">Referral invites</p>
+            <p className="mt-1 text-lg font-semibold text-cyan-50">
+              {invitesCreated} / {maxInvites} slots used
+            </p>
+            <p className="text-xs text-cyan-100">
+              {invitesOpen ? "Invite phase is live; reserve slots before they’re gone." : "Invite phase opens after free-claim window fills."}
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/15 bg-white/10 p-4 shadow-lg shadow-emerald-500/10">
+            <p className="text-xs uppercase tracking-wide text-slate-200">Market maker</p>
+            <p className="mt-1 text-lg font-semibold text-slate-50">
+              {poolFunded && poolHasDemo ? `${priceEthPerDemo} ETH / DEMO` : "Waiting for liquidity"}
+            </p>
+            <p className="text-xs text-slate-200">
+              Reserves: {formatToken(reserveEth)} ETH · {formatToken(reserveDemo)} DEMO
+            </p>
+          </div>
+        </div>
       </header>
 
       <section className="mx-auto max-w-6xl px-3 pt-4 md:px-4">
-        <div className="glass w-full p-4">
+        <div className="glass w-full p-4 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm uppercase tracking-wide text-slate-400">How it works</p>
-              <h3 className="text-lg font-semibold text-slate-50">Claim and invite</h3>
+              <p className="text-sm uppercase tracking-wide text-slate-400">Experience map</p>
+              <h3 className="text-lg font-semibold text-slate-50">Pick your lane and dive in</h3>
             </div>
             <button
               onClick={() => setShowHow((v) => !v)}
               className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-slate-100 hover:-translate-y-0.5"
             >
-              {showHow ? "Hide steps" : "Show steps"}
+              {showHow ? "Hide flow" : "Show flow"}
             </button>
           </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {[
+              {
+                title: "Merkle airdrop",
+                body: "Prove eligibility, pick a recipient, and mint your 100 DEMO.",
+                accent: "from-emerald-400/30 to-emerald-500/20",
+                target: "airdrop",
+                cta: "Claim flow",
+              },
+              {
+                title: "Referral invites",
+                body: "After claiming, reserve up to five invite slots and share them.",
+                accent: "from-cyan-400/30 to-blue-500/10",
+                target: "invites",
+                cta: "Manage invites",
+              },
+              {
+                title: "Market maker",
+                body: "Seed the pool, set slippage, and swap ETH ↔ DEMO against reserves.",
+                accent: "from-white/15 to-slate-700/40",
+                target: "market-maker",
+                cta: "Trade panel",
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className={`rounded-2xl border border-white/10 bg-gradient-to-br ${card.accent} p-4 shadow-lg shadow-emerald-500/10`}
+              >
+                <p className="text-sm font-semibold text-slate-50">{card.title}</p>
+                <p className="mt-1 text-sm text-slate-300">{card.body}</p>
+                <div className={`mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r ${card.accent} px-3 py-1 text-xs font-semibold text-slate-900`}>
+                  <span className="text-slate-900">•</span>
+                  <span>{card.cta}</span>
+                </div>
+                <button
+                  onClick={() => switchTab(card.target as "airdrop" | "invites" | "market")}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5"
+                >
+                  Jump in →
+                </button>
+              </div>
+            ))}
+          </div>
           {showHow && (
-            <ol className="mt-3 grid gap-2 text-sm text-slate-300 md:grid-cols-4">
+            <ol className="mt-4 grid gap-2 text-sm text-slate-300 md:grid-cols-4">
               <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
                 1. Connect wallet on {CHAIN_NAME}.
               </li>
               <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                2. Check status to see if you can claim.
+                2. Fetch your proof and confirm eligibility.
               </li>
               <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                3. Send your claim if eligible; choose where tokens go.
+                3. Claim (and optionally redirect) your DEMO, unlocking invites.
               </li>
               <li className="rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                4. After claiming, create invites when the invite phase opens.
+                4. Seed liquidity or swap with slippage protection.
               </li>
             </ol>
           )}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-3 pt-4 md:px-4">
+      <section id="tab-root" className="mx-auto max-w-6xl px-3 pt-4 md:px-4">
+        <div className="glass w-full p-4 md:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-400">Navigation</p>
+              <h3 className="text-lg font-semibold text-slate-50">Choose a track</h3>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-300">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                Claims: {claimCount !== null ? claimCount : "—"} / {freeClaims}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                Invites: {invitesCreated} / {maxInvites}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                Pool: {poolFunded && poolHasDemo ? `${priceEthPerDemo} ETH/DEMO` : "Unseeded"}
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {[
+              { key: "airdrop", title: "Airdrop", subtitle: "Proof + claim", badge: freeClaimsRemaining !== null ? `${freeClaimsRemaining} free left` : "Check status" },
+              { key: "invites", title: "Invites", subtitle: "Referral slots", badge: `${invitesCreated}/${maxInvites} used` },
+              { key: "market", title: "Market maker", subtitle: "Donate + swap", badge: poolFunded ? "Live" : "Needs ETH" },
+            ].map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => switchTab(tab.key as "airdrop" | "invites" | "market")}
+                  className={clsx(
+                    "flex w-full flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition",
+                    isActive
+                      ? "border-emerald-400/60 bg-emerald-400/10 shadow-[0_0_18px_rgba(52,211,153,0.2)]"
+                      : "border-white/10 bg-white/5 hover:-translate-y-0.5"
+                  )}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{tab.title}</p>
+                      <p className="text-xs text-slate-400">{tab.subtitle}</p>
+                    </div>
+                    <span className={clsx("rounded-full border px-2 py-1 text-[11px]", isActive ? "border-emerald-300 bg-emerald-300/20 text-emerald-100" : "border-white/15 bg-white/10 text-slate-200")}>
+                      {tab.badge}
+                    </span>
+                  </div>
+                  {isActive && <span className="text-[11px] text-emerald-200">Active</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {activeTab === "market" && (
+      <section id="market-maker" className="mx-auto max-w-6xl px-3 pt-4 md:px-4">
         <div className="glass w-full space-y-4 p-4 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm uppercase tracking-wide text-slate-400">Trade</p>
-              <h3 className="text-xl font-semibold text-slate-50">Swap ETH ↔ DEMO</h3>
+              <p className="text-sm uppercase tracking-wide text-slate-400">Market maker</p>
+              <h3 className="text-xl font-semibold text-slate-50">Seed and swap against the DEMO pool</h3>
               <p className="text-sm text-slate-300">
-                The contract-owned pool uses a constant-product curve. Buy with ETH or sell DEMO for ETH.
+                Contract-owned constant-product AMM with no LP tokens. Set slippage, donate ETH, and swap both ways.
               </p>
             </div>
-          <div className="grid grid-cols-2 gap-2 text-sm text-slate-200">
-            <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-              <p className="text-xs text-slate-400">ETH reserve</p>
-              <p className="font-semibold">{formatToken(reserveEth)} ETH</p>
-            </div>
-              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                <p className="text-xs text-slate-400">DEMO reserve</p>
-                <p className="font-semibold">{formatToken(reserveDemo)} DEMO</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                <p className="text-xs text-slate-400">Price (ETH per DEMO)</p>
-                <p className="font-semibold">{priceEthPerDemo}</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                <p className="text-xs text-slate-400">Price (DEMO per ETH)</p>
-                <p className="font-semibold">{priceDemoPerEth}</p>
-              </div>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-100">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">ETH reserve: {formatToken(reserveEth)} </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">DEMO reserve: {formatToken(reserveDemo)} </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Price: {priceEthPerDemo} ETH/DEMO</span>
             </div>
           </div>
 
@@ -1003,68 +1146,88 @@ export default function HomePage() {
             </div>
           )}
 
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">Donate ETH to seed the pool</p>
-                <p className="text-xs text-slate-400">
-                  Anyone can boost reserves. A simple ETH transfer increases liquidity and unlocks claiming.
-                </p>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Donate ETH to seed the pool</p>
+                  <p className="text-xs text-slate-400">
+                    Anyone can boost reserves. A simple ETH transfer increases liquidity and unlocks claiming.
+                  </p>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                  Contract: {shorten(CONTRACT_ADDRESS)}
+                </span>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                Contract: {shorten(CONTRACT_ADDRESS)}
-              </span>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  value={donateAmount}
+                  onChange={(e) => setDonateAmount(e.target.value)}
+                  placeholder="0.0001"
+                  className="w-full flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                />
+                <button
+                  onClick={handleDonate}
+                  disabled={donating || !account || chain?.id !== CHAIN_ID || !donateAmount}
+                  className="w-full rounded-lg border border-emerald-400/50 bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-100 shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 disabled:opacity-50 sm:w-auto"
+                >
+                  {donating ? "Sending…" : account ? "Donate ETH" : "Connect to donate"}
+                </button>
+              </div>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                value={donateAmount}
-                onChange={(e) => setDonateAmount(e.target.value)}
-                placeholder="0.0001"
-                className="w-full flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-              />
-              <button
-                onClick={handleDonate}
-                disabled={donating || !account || chain?.id !== CHAIN_ID || !donateAmount}
-                className="w-full rounded-lg border border-emerald-400/50 bg-emerald-400/10 px-3 py-2 text-sm font-semibold text-emerald-100 shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 disabled:opacity-50 sm:w-auto"
-              >
-                {donating ? "Sending…" : account ? "Donate ETH" : "Connect to donate"}
-              </button>
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">Slippage tolerance</p>
-                <p className="text-xs text-slate-400">
-                  Applied to both buys and sells; swap reverts if output is lower.
-                </p>
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Slippage tolerance</p>
+                  <p className="text-xs text-slate-400">
+                    Applied to both buys and sells; swap reverts if output is lower.
+                  </p>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                  {slippageBps !== null ? `${(Number(slippageBps) / 100).toFixed(2)}%` : "Invalid"}
+                </span>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                {slippageBps !== null ? `${(Number(slippageBps) / 100).toFixed(2)}%` : "Invalid"}
-              </span>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <input
+                  value={slippage}
+                  onChange={(e) => setSlippage(e.target.value)}
+                  placeholder="1.0"
+                  className="w-full flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                />
+                <div className="space-y-1 text-xs text-slate-300">
+                  <p>Min buy out: {buyMinOut ? `${formatToken(buyMinOut)} DEMO` : "—"}</p>
+                  <p>Min sell out: {sellMinOut ? `${formatToken(sellMinOut)} ETH` : "—"}</p>
+                </div>
+              </div>
+              {slippageBps === null && (
+                <p className="mt-2 text-xs text-amber-200">
+                  Enter a percentage between 0 and 100 with up to two decimals.
+                </p>
+              )}
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <input
-                value={slippage}
-                onChange={(e) => setSlippage(e.target.value)}
-                placeholder="1.0"
-                className="w-full flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-              />
-              <div className="space-y-1 text-xs text-slate-300">
-                <p>
-                  Min buy out: {buyMinOut ? `${formatToken(buyMinOut)} DEMO` : "—"}
-                </p>
-                <p>
-                  Min sell out: {sellMinOut ? `${formatToken(sellMinOut)} ETH` : "—"}
-                </p>
+
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-sm font-semibold text-slate-100">Pool snapshot</p>
+              <div className="mt-3 space-y-2 text-sm text-slate-200">
+                <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="text-xs text-slate-400">ETH reserve</span>
+                  <span className="font-semibold">{formatToken(reserveEth)} ETH</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="text-xs text-slate-400">DEMO reserve</span>
+                  <span className="font-semibold">{formatToken(reserveDemo)} DEMO</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="text-xs text-slate-400">Price (ETH per DEMO)</span>
+                  <span className="font-semibold">{priceEthPerDemo}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="text-xs text-slate-400">Price (DEMO per ETH)</span>
+                  <span className="font-semibold">{priceDemoPerEth}</span>
+                </div>
               </div>
             </div>
-            {slippageBps === null && (
-              <p className="mt-2 text-xs text-amber-200">
-                Enter a percentage between 0 and 100 with up to two decimals.
-              </p>
-            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -1148,33 +1311,49 @@ export default function HomePage() {
           </p>
         </div>
       </section>
+      )}
 
-      <main className="relative mx-auto grid max-w-6xl grid-cols-1 gap-4 px-3 pb-14 pt-4 lg:grid-cols-2 lg:gap-6 lg:px-4">
-        {!account ? (
-          <div className="glass w-full p-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+      {activeTab === "airdrop" && (
+      <section id="airdrop" className="mx-auto max-w-6xl px-3 pt-6 md:px-4">
+        <div className="glass w-full space-y-5 p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-400">Merkle airdrop</p>
+              <h3 className="text-xl font-semibold text-slate-50">Verify, claim, and route your DEMO</h3>
+              <p className="text-sm text-slate-300">
+                Proof-backed claims unlock invites. Pick a recipient before minting your 100 DEMO.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-300">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                Free claims left: {freeClaimsRemaining !== null ? freeClaimsRemaining : "—"}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                Invite phase after: {freeClaims}
+              </span>
+            </div>
+          </div>
+
+          {!account ? (
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm uppercase tracking-wide text-slate-400">
-                    Wallet
+                  <p className="text-lg font-semibold text-slate-50">Connect to start your claim</p>
+                  <p className="text-sm text-slate-300">
+                    We’ll fetch your proof, show eligibility, and guide you to the next step.
                   </p>
-                  <p className="text-lg font-semibold">Not connected</p>
-                  <p className="text-sm text-slate-400">Connect to view your status.</p>
                 </div>
-                <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowProviderModal(true)}
-                      disabled={connectors.length === 0}
-                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
-                    >
-                      Connect wallet
-                    </button>
-                </div>
+                <button
+                  onClick={() => setShowProviderModal(true)}
+                  disabled={connectors.length === 0}
+                  className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-60"
+                >
+                  Connect wallet
+                </button>
               </div>
-
               <div
                 className={clsx(
-                  "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                  "mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
                   statusToneClasses[status.tone]
                 )}
               >
@@ -1186,91 +1365,72 @@ export default function HomePage() {
                     status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
                   )}
                 />
-                <span className="leading-relaxed">{status.message}</span>
+                <span className="leading-relaxed break-words">{status.message}</span>
               </div>
-
+              <div className="mt-4 grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
+                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">1) Connect</div>
+                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">2) Fetch proof</div>
+                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">3) Claim + route tokens</div>
+              </div>
             </div>
-          </div>
-        ) : (
-          <>
-            <div className="glass w-full p-6">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm uppercase tracking-wide text-slate-400">
-                      Wallet
+                    <p className="text-sm uppercase tracking-wide text-slate-400">Eligibility & claim</p>
+                    <h4 className="text-lg font-semibold text-slate-50">Proof-driven mint</h4>
+                    <p className="text-xs text-slate-400">
+                      {invitesRequired
+                        ? "Invites required after free-claim window. Check proof and inviter first."
+                        : "Free-claim window open. Proof + claim mints instantly."}
                     </p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg font-semibold font-mono text-slate-50 break-all">
-                        {account ?? "Not connected"}
-                      </p>
-                      {account && (
-                        <button
-                          onClick={() => copyToClipboard(account, "account")}
-                          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-emerald-100 hover:-translate-y-0.5"
-                        >
-                          ⧉
-                          {copiedKey === "account" && <span className="text-emerald-300">Copied</span>}
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-400">{networkLabel}</p>
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => setShowProviderModal(true)}
-                      disabled={connectors.length === 0}
-                      className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-60"
-                    >
-                      {account ? "Switch wallet" : "Connect wallet"}
-                    </button>
+                  <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => refreshProof()}
-                      disabled={!account}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-40"
+                      disabled={!account || checkingProof}
+                      className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 disabled:opacity-50"
                     >
-                      Check status
+                      {checkingProof ? "Checking…" : "Refresh proof"}
                     </button>
                     <button
                       onClick={disconnectWallet}
-                      disabled={!account}
-                      className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-2 font-semibold text-slate-100 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-40"
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5"
                     >
                       Disconnect
                     </button>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <div
+                <div
+                  className={clsx(
+                    "mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+                    statusToneClasses[status.tone]
+                  )}
+                >
+                  <span
                     className={clsx(
-                      "flex flex-wrap items-start gap-3 rounded-xl border px-4 py-3 text-sm",
-                      statusToneClasses[status.tone]
+                      "mt-1 h-2.5 w-2.5 rounded-full",
+                      status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
+                      status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
+                      status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
                     )}
-                  >
-                    <span
-                      className={clsx(
-                        "mt-1 h-2.5 w-2.5 rounded-full",
-                        status.tone === "good" && "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]",
-                        status.tone === "bad" && "bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.8)]",
-                        status.tone === "info" && "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.7)]"
-                      )}
-                    />
-                    <span className="leading-relaxed break-words">{status.message}</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-xs text-slate-200">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
-                      →
-                    </span>
-                    <span className="font-medium">Next step:</span>
-                    <span className="text-slate-100 break-words">{nextStep}</span>
-                    {(checkingProof || claiming || inviting) && (
-                      <span className="ml-2 h-3 w-3 animate-spin rounded-full border border-emerald-400 border-t-transparent" />
-                    )}
-                  </div>
+                  />
+                  <span className="leading-relaxed break-words">{status.message}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-xs text-slate-200">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
+                    →
+                  </span>
+                  <span className="font-medium">Next step:</span>
+                  <span className="text-slate-100 break-words">{nextStep}</span>
+                  {(checkingProof || claiming || inviting) && (
+                    <span className="ml-2 h-3 w-3 animate-spin rounded-full border border-emerald-400 border-t-transparent" />
+                  )}
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <Stat label="Claimed" value={hasClaimed ? "Yes" : "No"} />
                   <Stat
                     label="Invitation"
@@ -1282,85 +1442,159 @@ export default function HomePage() {
                         : "Not required"
                     }
                   />
-                  <Stat
-                    label="Total claims"
-                    value={claimCount !== null ? claimCount.toString() : "—"}
-                  />
+                  <Stat label="Total claims" value={claimCount !== null ? claimCount.toString() : "—"} />
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-slate-200">
-                        Eligibility
-                      </p>
+                      <p className="text-sm font-semibold text-slate-200">Claim output</p>
                       <p className="text-xs text-slate-400">
-                        Connect your wallet to check if you can claim.
+                        Check your proof and inviter state before minting.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => refreshProof()}
-                        disabled={!account || checkingProof}
-                        className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-50"
-                      >
-                        {checkingProof ? "Checking…" : "Check status"}
-                      </button>
-                    </div>
+                    <button
+                      onClick={claim}
+                      disabled={!canClaim}
+                      className="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                    >
+                      {claiming ? "Sending…" : "Send claim"}
+                    </button>
                   </div>
-
-                  <div className="mt-4 text-sm text-slate-300">
+                  <div className="mt-3 text-sm text-slate-300">
                     {account && hasClaimed && "You already claimed with this wallet."}
                     {account && !hasClaimed && proof && !invitesRequired && "You can claim with this wallet."}
                     {account && !hasClaimed && proof && invitesRequired && invitedBy && "You are invited and can claim."}
                     {account && !hasClaimed && invitesRequired && !invitedBy && "You are qualified, but you need an invitation to claim right now."}
                     {account && !proof && !checkingProof && !hasClaimed && "Refresh to check your eligibility."}
                   </div>
+                  <div className="mt-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-300">
+                    <label className="text-xs uppercase tracking-wide text-slate-400">
+                      Send tokens to
+                    </label>
+                    <input
+                      value={recipient}
+                      onChange={(e) => setRecipient(e.target.value)}
+                      placeholder={account ?? "0x..."}
+                      className="w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Default is your connected wallet. You can redirect the 100 DEMO to another address.
+                    </p>
+                  </div>
+                  {claimDisabledReason && (
+                    <p className="mt-2 text-xs text-amber-200">{claimDisabledReason}</p>
+                  )}
+                </div>
+              </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-200">Wallet + network</p>
+                      <p className="text-xs text-slate-400">Stay on {CHAIN_NAME} to transact.</p>
+                    </div>
                     <button
-                      onClick={claim}
-                      disabled={!canClaim}
-                      className="w-full rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-50"
+                      onClick={() => copyToClipboard(account!, "account")}
+                      className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:-translate-y-0.5"
                     >
-                      {claiming ? "Sending…" : "Send claim"}
+                      ⧉
+                      {copiedKey === "account" && <span className="text-emerald-300">Copied</span>}
                     </button>
-                    {claimDisabledReason && (
-                      <p className="text-xs text-amber-200">{claimDisabledReason}</p>
-                )}
-                <div className="mt-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-300">
-                  <label className="text-xs uppercase tracking-wide text-slate-400">
-                    Send tokens to
-                  </label>
-                  <input
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
-                    placeholder={account ?? "0x..."}
-                    className="w-full rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-                  />
-                  <p className="text-xs text-slate-500">
-                    Default is your connected wallet. You can redirect the 100 DEMO to another address.
-                  </p>
+                  </div>
+                  <p className="mt-2 break-all font-mono text-sm text-slate-100">{account}</p>
+                  <p className="text-xs text-slate-400">{networkLabel}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setShowProviderModal(true)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 hover:-translate-y-0.5"
+                    >
+                      Switch wallet
+                    </button>
+                    <button
+                      onClick={() => refreshOnChain(account)}
+                      className="rounded-lg border border-emerald-400/50 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:-translate-y-0.5"
+                    >
+                      Refresh on-chain
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                  <p className="text-sm font-semibold text-slate-200">Proof details</p>
+                  {proofRows.length === 0 ? (
+                    <p className="mt-2 text-xs text-slate-400">
+                      No proof loaded yet. Use “Refresh proof” to pull from the API.
+                    </p>
+                  ) : (
+                    <dl className="mt-3 space-y-2 text-xs text-slate-200">
+                      {proofRows.map((row) => (
+                        <div
+                          key={row.label}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/5 px-3 py-2"
+                        >
+                          <dt className="text-slate-400">{row.label}</dt>
+                          <dd className="break-all font-mono text-[11px] text-slate-100">{row.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-200">
+                  <p className="text-sm font-semibold text-slate-200">Claim checkpoints</p>
+                  <ul className="mt-2 space-y-2 text-xs text-slate-300">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5 h-2 w-2 rounded-full bg-emerald-400" />
+                      <span>
+                        {poolFunded
+                          ? "ETH liquidity present; claims are unlocked."
+                          : "Seed the pool with ETH before claiming."}
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5 h-2 w-2 rounded-full bg-cyan-400" />
+                      <span>
+                        {invitesRequired
+                          ? invitedBy
+                            ? `Invited by ${shorten(invitedBy)}`
+                            : "Invite required once free-claim window is filled."
+                          : "No invite required until the free-claim window ends."}
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-0.5 h-2 w-2 rounded-full bg-white/80" />
+                      <span>Each claim mints 10 DEMO into the AMM for future swaps.</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
-          </div>
-            </div>
+          )}
+        </div>
+      </section>
+      )}
 
-            <div className="glass w-full space-y-6 p-6">
-          <div>
-            <p className="text-sm uppercase tracking-wide text-slate-400">
-              Invitations
-            </p>
-            <h3 className="text-xl font-semibold">Share access after you claim</h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Once you have claimed, you can create up to {maxInvites} invitations. The invite phase controls when invites are available.
-            </p>
-            {!invitesOpen && (
-              <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                Invite phase has not started yet.
+      {activeTab === "invites" && (
+      <section id="invites" className="mx-auto max-w-6xl px-3 pt-6 pb-14 md:px-4">
+        <div className="glass w-full space-y-5 p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-400">Referrals & invites</p>
+              <h3 className="text-xl font-semibold text-slate-50">Share access once you’ve claimed</h3>
+              <p className="text-sm text-slate-300">
+                Create up to {maxInvites} fixed slots. Slots lock once claimed; revoke unused ones anytime.
               </p>
-            )}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-300">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                Invites created: {invitesCreated} / {maxInvites}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                Phase: {invitesOpen ? "Open" : "Locked"}
+              </span>
+            </div>
           </div>
 
           {!account || !hasClaimed ? (
@@ -1378,7 +1612,7 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <>
+            <div className="grid gap-4 lg:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-sm font-semibold text-slate-200">Your status</p>
                 <div className="mt-3 grid gap-2 text-sm">
@@ -1387,31 +1621,57 @@ export default function HomePage() {
                     value={invitedBy ?? "No inviter"}
                     copyValue={invitedBy ?? undefined}
                     monospace
-                    onCopy={
-                      invitedBy ? () => copyToClipboard(invitedBy, "invitedBy") : undefined
-                    }
+                    onCopy={invitedBy ? () => copyToClipboard(invitedBy, "invitedBy") : undefined}
                     copied={copiedKey === "invitedBy"}
                   />
                   <InfoRow label="Invites created" value={`${invitesCreated} / ${maxInvites}`} />
+                  <InfoRow
+                    label="Available slots"
+                    value={`${
+                      maxInvites -
+                      normalizedSlots.filter((s) => s.invitee && s.used).length -
+                      normalizedSlots.filter((s) => s.invitee && !s.used).length
+                    } open`}
+                  />
                 </div>
+                <p className="mt-3 text-xs text-slate-400">
+                  Invite tree pays down five levels; make sure you share with trusted wallets.
+                </p>
               </div>
 
-	              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-	                <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
-	                <p className="mt-1 text-xs text-slate-400">
-	                  You have {maxInvites} fixed slots. Create uses the next open slot; revoke frees an unused one.
-	                </p>
-	                <p className="mt-2 text-xs text-slate-300">
-	                  Summary:{" "}
-	                  {normalizedSlots.filter((s) => s.invitee && s.used).length} used ·{" "}
-	                  {normalizedSlots.filter((s) => s.invitee && !s.used).length} reserved ·{" "}
-	                  {maxInvites -
-	                    normalizedSlots.filter((s) => s.invitee && s.used).length -
-	                    normalizedSlots.filter((s) => s.invitee && !s.used).length}{" "}
-	                  open
-	                </p>
+              <div className="lg:col-span-2 rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
+                    <p className="text-xs text-slate-400">
+                      You have {maxInvites} fixed slots. Create uses the next open slot; revoke frees an unused one.
+                    </p>
+                    <p className="mt-1 text-xs text-slate-300">
+                      Summary: {normalizedSlots.filter((s) => s.invitee && s.used).length} used ·{" "}
+                      {normalizedSlots.filter((s) => s.invitee && !s.used).length} reserved ·{" "}
+                      {maxInvites -
+                        normalizedSlots.filter((s) => s.invitee && s.used).length -
+                        normalizedSlots.filter((s) => s.invitee && !s.used).length}{" "}
+                      open
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => refreshOnChain(account)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 hover:-translate-y-0.5"
+                    >
+                      Refresh slots
+                    </button>
+                    <button
+                      onClick={() => setShowProviderModal(true)}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 hover:-translate-y-0.5"
+                    >
+                      Switch wallet
+                    </button>
+                  </div>
+                </div>
 
-                <div className="mt-3 grid gap-2">
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
                   {normalizedSlots.map((slot, idx) => {
                     const isPending = slot.invitee && !slot.used;
                     const isUsed = slot.invitee && slot.used;
@@ -1440,17 +1700,28 @@ export default function HomePage() {
                         </div>
 
                         {slot.invitee && (
-                          <div className="mt-2 flex items-center gap-2 font-mono text-[13px] text-slate-100 break-all">
-                            <span>{slot.invitee}</span>
-                            <button
-                              onClick={() => copyToClipboard(slot.invitee!, `slot-${idx}`)}
-                              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:-translate-y-0.5"
-                            >
-                              ⧉
-                              {copiedKey === `slot-${idx}` && (
-                                <span className="text-emerald-300">Copied</span>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[13px] text-slate-100 break-all">
+                            <span className="break-all">{slot.invitee}</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => copyToClipboard(slot.invitee!, `slot-${idx}`)}
+                                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:-translate-y-0.5"
+                              >
+                                ⧉
+                                {copiedKey === `slot-${idx}` && (
+                                  <span className="text-emerald-300">Copied</span>
+                                )}
+                              </button>
+                              {isPending && (
+                                <button
+                                  onClick={() => revokeInvite(idx)}
+                                  disabled={revokingSlot === idx}
+                                  className="inline-flex items-center gap-1 rounded-md border border-amber-300/50 bg-amber-300/10 px-2 py-1 text-[11px] font-semibold text-amber-100 hover:-translate-y-0.5 disabled:opacity-50"
+                                >
+                                  {revokingSlot === idx ? "Revoking…" : "Revoke"}
+                                </button>
                               )}
-                            </button>
+                            </div>
                           </div>
                         )}
                         {isPending && (
@@ -1464,32 +1735,31 @@ export default function HomePage() {
 
                 <div className="mt-4 space-y-2">
                   <p className="text-xs text-slate-400">Enter an address to assign to the next open slot.</p>
-                    <div className="flex flex-wrap gap-2">
-                      <input
-                        value={invitee}
-                        onChange={(e) => setInvitee(e.target.value)}
-                        placeholder="0x… invitee"
-                        className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-                      />
-                      <button
-                        onClick={createInvite}
-                        disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
-                        className="w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-50"
-                      >
-                        {inviting ? "Creating…" : "Create invite"}
-                      </button>
-                    </div>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      value={invitee}
+                      onChange={(e) => setInvitee(e.target.value)}
+                      placeholder="0x… invitee"
+                      className="w-full flex-1 rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                    />
+                    <button
+                      onClick={createInvite}
+                      disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
+                      className="w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 sm:w-auto disabled:opacity-50"
+                    >
+                      {inviting ? "Creating…" : "Create invite"}
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-400">
-                    Requires that you have already claimed. Invites unlock when the invite phase starts. Revoke before a claim to free a slot; claimed invites stay locked.
+                    Requires that you have already claimed. Revoke before a claim to free a slot; claimed invites stay locked.
                   </p>
                 </div>
               </div>
-            </>
-	          )}
-	          </div>
-	          </>
-	        )}
-	      </main>
+            </div>
+          )}
+        </div>
+      </section>
+      )}
       <ProviderModal
         open={showProviderModal}
         onClose={() => setShowProviderModal(false)}
