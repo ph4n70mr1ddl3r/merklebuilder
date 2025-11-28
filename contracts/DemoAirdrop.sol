@@ -35,6 +35,10 @@ contract DemoAirdrop {
     mapping(address => InvitationSlot[MAX_INVITES]) public invitationSlots; // fixed slots per inviter
 
     uint256 public claimCount;
+    uint256 public reserveETH;
+    uint256 public reserveDEMO;
+
+    bool private locked;
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -42,10 +46,26 @@ contract DemoAirdrop {
     event InvitationCreated(address indexed inviter, address indexed invitee, uint8 slot);
     event InvitationRevoked(address indexed inviter, address indexed invitee, uint8 slot);
     event ReferralPaid(address indexed invitee, address indexed referrer, uint256 amount, uint256 level);
+    event Swap(address indexed sender, bool ethForDemo, uint256 amountIn, uint256 amountOut, uint256 newReserveEth, uint256 newReserveDemo);
 
-    constructor(uint256 freeClaims_) {
+    modifier nonReentrant() {
+        require(!locked, "DEMO: reentrancy");
+        locked = true;
+        _;
+        locked = false;
+    }
+
+    constructor(uint256 freeClaims_) payable {
         require(freeClaims_ > 0, "DEMO: free claims must be >0");
         FREE_CLAIMS = freeClaims_;
+        // Count any ETH sent at deployment as AMM seed; airdrop stays paused until reserveETH > 0.
+        reserveETH = msg.value;
+        reserveDEMO = 0;
+    }
+
+    /// @notice Accept direct ETH to seed or grow the AMM reserves.
+    receive() external payable {
+        reserveETH += msg.value;
     }
 
     // --- ERC20 ---
@@ -106,6 +126,7 @@ contract DemoAirdrop {
         require(recipient != address(0), "DEMO: recipient zero");
         require(!hasClaimed[account], "DEMO: already claimed");
         require(proof.length == proofFlags.length, "DEMO: proof length mismatch");
+        require(reserveETH > 0, "DEMO: market maker not funded");
 
         bytes32 leaf = keccak256(abi.encodePacked(account));
         require(_verify(leaf, proof, proofFlags), "DEMO: invalid proof");
@@ -119,6 +140,9 @@ contract DemoAirdrop {
         hasClaimed[account] = true;
         claimCount += 1;
         _mint(recipient, CLAIM_AMOUNT);
+        uint256 ammMint = 10 ether;
+        _mint(address(this), ammMint);
+        reserveDEMO += ammMint;
         _payReferrals(account);
         emit Claimed(account, recipient, CLAIM_AMOUNT);
     }
@@ -225,5 +249,53 @@ contract DemoAirdrop {
                 return;
             }
         }
+    }
+
+    // --- Constant Product Market Maker (no LP tokens, contract-owned liquidity) ---
+    function previewBuy(uint256 amountIn) public view returns (uint256 amountOut) {
+        require(amountIn > 0, "DEMO: zero ETH in");
+        require(reserveDEMO > 0, "DEMO: no DEMO liquidity");
+        // x * y = k ; dy = (amountIn * reserveDEMO) / (reserveETH + amountIn)
+        amountOut = (amountIn * reserveDEMO) / (reserveETH + amountIn);
+        require(amountOut > 0 && amountOut <= reserveDEMO, "DEMO: insufficient output");
+    }
+
+    function previewSell(uint256 amountIn) public view returns (uint256 amountOut) {
+        require(amountIn > 0, "DEMO: zero DEMO in");
+        require(reserveETH > 0, "DEMO: no ETH liquidity");
+        // x * y = k ; dy = (amountIn * reserveETH) / (reserveDEMO + amountIn)
+        amountOut = (amountIn * reserveETH) / (reserveDEMO + amountIn);
+        require(amountOut > 0 && amountOut <= reserveETH, "DEMO: insufficient output");
+    }
+
+    function buyDemo(uint256 minAmountOut) external payable nonReentrant returns (uint256 amountOut) {
+        uint256 amountIn = msg.value;
+        amountOut = previewBuy(amountIn);
+        require(amountOut >= minAmountOut, "DEMO: slippage");
+
+        reserveETH += amountIn;
+        reserveDEMO -= amountOut;
+
+        _transfer(address(this), msg.sender, amountOut);
+        emit Swap(msg.sender, true, amountIn, amountOut, reserveETH, reserveDEMO);
+    }
+
+    function sellDemo(uint256 amountIn, uint256 minAmountOut) external nonReentrant returns (uint256 amountOut) {
+        amountOut = previewSell(amountIn);
+        require(amountOut >= minAmountOut, "DEMO: slippage");
+        // Pull tokens in before updating reserves/paying ETH out.
+        _transfer(msg.sender, address(this), amountIn);
+
+        reserveDEMO += amountIn;
+        reserveETH -= amountOut;
+
+        (bool ok, ) = msg.sender.call{value: amountOut}("");
+        require(ok, "DEMO: ETH transfer failed");
+
+        emit Swap(msg.sender, false, amountIn, amountOut, reserveETH, reserveDEMO);
+    }
+
+    function getReserves() external view returns (uint256 ethReserve, uint256 demoReserve) {
+        return (reserveETH, reserveDEMO);
     }
 }
