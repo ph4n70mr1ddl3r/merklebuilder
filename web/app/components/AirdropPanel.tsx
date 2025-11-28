@@ -11,7 +11,7 @@ type ProofRow = { label: string; value: string };
 
 type AirdropPanelProps = {
   account?: string;
-  connectors: { id: string; name: string; ready?: boolean }[];
+  connectors: readonly any[];
   checkingProof: boolean;
   claimCount: number | null;
   freeClaims: number;

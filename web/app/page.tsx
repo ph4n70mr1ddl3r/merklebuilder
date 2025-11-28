@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ZeroAddress, getAddress, isAddress } from "ethers";
 import { parseEther, formatEther } from "viem";
+import { toast } from "sonner";
 import { API_BASE, CHAIN_ID, CHAIN_NAME, CONTRACT_ADDRESS, DEMO_ABI, ProofResponse } from "../lib/airdrop";
 import { useAccount, useConnect, useDisconnect, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract, readContract, sendTransaction } from "wagmi/actions";
@@ -14,6 +15,7 @@ import { AirdropPanel } from "./components/AirdropPanel";
 import { InvitesPanel } from "./components/InvitesPanel";
 import { ProviderModal } from "./components/ProviderModal";
 import { formatToken, shorten } from "../lib/format";
+import { addressSchema, amountSchema } from "../lib/validators";
 
 declare global {
   interface Window {
@@ -44,7 +46,8 @@ export default function HomePage() {
   const { switchChain } = useSwitchChain();
   const publicClient = usePublicClient();
 
-  const [status, setStatus] = useState<{ tone: Tone; message: string }>({
+  // Status for backward compatibility with components
+  const [status, setStatus] = useState<{ tone: "info" | "good" | "bad"; message: string }>({
     tone: "info",
     message: "Connect your wallet to begin.",
   });
@@ -98,6 +101,217 @@ export default function HomePage() {
     !claiming &&
     chain?.id === CHAIN_ID;
 
+  const resetUi = useCallback(() => {
+    setClaimCount(null);
+    setHasClaimed(false);
+    setInvitedBy(null);
+    setInvitesCreated(0);
+    setInvitationSlots([]);
+    setProof(null);
+    setRecipient("");
+    setDemoBalance(0n);
+  }, []);
+
+  const refreshReserves = useCallback(
+    async (addr?: string) => {
+      const target = addr ?? account;
+      try {
+        const [reserves, bal] = await Promise.all([
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "getReserves",
+          }),
+          target
+            ? readContract(wagmiConfig, {
+              address: CONTRACT_ADDRESS as `0x${string}`,
+              abi: DEMO_ABI,
+              functionName: "balanceOf",
+              args: [target as `0x${string}`],
+            })
+            : Promise.resolve(0n),
+        ]);
+        const tuple = reserves as readonly [bigint, bigint];
+        setReserveEth(BigInt(tuple[0]));
+        setReserveDemo(BigInt(tuple[1]));
+        if (typeof bal === "bigint") {
+          setDemoBalance(bal);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    [account]
+  );
+
+  const refreshOnChain = useCallback(
+    async (addr?: string) => {
+      const target = addr ?? account;
+      if (!target) return;
+      try {
+        const [claimed, inviter, created, count, free, max, slots] = await Promise.all([
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "hasClaimed",
+            args: [target as `0x${string}`],
+          }),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "invitedBy",
+            args: [target as `0x${string}`],
+          }),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "invitesCreated",
+            args: [target as `0x${string}`],
+          }),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "claimCount",
+          }),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "FREE_CLAIMS",
+          }),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "MAX_INVITES",
+          }),
+          readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "getInvitations",
+            args: [target as `0x${string}`],
+          }),
+        ]);
+        const invitees =
+          (Array.isArray((slots as any)[0]) ? ((slots as any)[0] as string[]) : []) || [];
+        const used =
+          (Array.isArray((slots as any)[1]) ? ((slots as any)[1] as boolean[]) : []) || [];
+        const parsedSlots =
+          invitees?.map((inv, idx) => ({
+            invitee: inv && inv !== ZeroAddress ? inv : null,
+            used: Boolean(used?.[idx]),
+          })) ?? [];
+
+        setHasClaimed(Boolean(claimed));
+        setInvitedBy((inviter as string) === ZeroAddress ? null : (inviter as string));
+        setInvitesCreated(Number(created));
+        setClaimCount(Number(count));
+        setFreeClaims(Number(free));
+        setMaxInvites(Number(max));
+        setInvitationSlots(parsedSlots);
+        await refreshReserves(target);
+      } catch (err: any) {
+        console.error(err);
+        setStatus({
+          tone: "bad",
+          message: err?.message || "Failed to read on-chain state.",
+        });
+      }
+    },
+    [account, refreshReserves]
+  );
+
+  const refreshProof = useCallback(
+    async (addressOverride?: string) => {
+      const target = addressOverride || account;
+      if (!target) {
+        toast.info("Connect your wallet to fetch proof.");
+        setStatus({ tone: "info", message: "Connect your wallet to fetch proof." });
+        return;
+      }
+      setCheckingProof(true);
+      setProof(null);
+      try {
+        const res = await fetch(`${API_BASE}/proof/${target}`);
+        if (!res.ok) {
+          const text = await res.text();
+          toast.error(`Not in airdrop list (${text || res.status})`);
+          setStatus({ tone: "bad", message: `Not in airdrop list (${text || res.status}).` });
+          setProof(null);
+          return;
+        }
+        const data: ProofResponse = await res.json();
+        const normalizedTarget = getAddress(target);
+        const proofAddress = getAddress(data.address);
+        if (normalizedTarget !== proofAddress) {
+          toast.error(`Proof is for ${shorten(proofAddress)}. Connect that wallet to claim.`);
+          setStatus({
+            tone: "bad",
+            message: `Proof is for ${shorten(proofAddress)}. Connect that wallet to claim.`,
+          });
+          setProof(null);
+          return;
+        }
+
+        setProof(data);
+
+        let claimed = hasClaimed;
+        let inviterAddr: string | null = invitedBy;
+        try {
+          const [claimedOnChain, inviterOnChain] = await Promise.all([
+            readContract(wagmiConfig, {
+              address: CONTRACT_ADDRESS as `0x${string}`,
+              abi: DEMO_ABI,
+              functionName: "hasClaimed",
+              args: [target as `0x${string}`],
+            }),
+            readContract(wagmiConfig, {
+              address: CONTRACT_ADDRESS as `0x${string}`,
+              abi: DEMO_ABI,
+              functionName: "invitedBy",
+              args: [target as `0x${string}`],
+            }),
+          ]);
+          claimed = Boolean(claimedOnChain);
+          setHasClaimed(claimed);
+          inviterAddr =
+            (inviterOnChain as string) === ZeroAddress ? null : (inviterOnChain as string);
+          setInvitedBy(inviterAddr);
+        } catch (innerErr) {
+          console.error(innerErr);
+        }
+
+        if (claimed) {
+          toast.info("Proof found. This wallet has already claimed.");
+          setStatus({
+            tone: "info",
+            message: "Proof found. This wallet has already claimed.",
+          });
+        } else if (invitesRequired && !inviterAddr) {
+          toast.warning("You are qualified, but you need an invitation to claim right now.");
+          setStatus({
+            tone: "info",
+            message: "You are qualified, but you need an invitation to claim right now.",
+          });
+        } else {
+          toast.success("Proof found. You can claim now.");
+          setStatus({
+            tone: "good",
+            message: "Proof found. You can claim now.",
+          });
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err?.message || "Failed to fetch proof.");
+        setStatus({
+          tone: "bad",
+          message: err?.message || "Failed to fetch proof.",
+        });
+      } finally {
+        setCheckingProof(false);
+      }
+    },
+    [account, hasClaimed, invitesRequired, invitedBy]
+  );
+
   useEffect(() => {
     if (chain?.id === CHAIN_ID) {
       setNetworkLabel(`${CHAIN_NAME} (${chain.id})`);
@@ -131,11 +345,11 @@ export default function HomePage() {
       await refreshProof(account);
     };
     run();
-  }, [account, chain, switchChain]);
+  }, [account, chain, refreshOnChain, refreshProof, resetUi, switchChain]);
 
   useEffect(() => {
     refreshReserves(account);
-  }, [account]);
+  }, [account, refreshReserves]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -177,35 +391,27 @@ export default function HomePage() {
     anchor?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const resetUi = () => {
-    setClaimCount(null);
-    setHasClaimed(false);
-    setInvitedBy(null);
-    setInvitesCreated(0);
-    setInvitationSlots([]);
-    setProof(null);
-    setRecipient("");
-    setDemoBalance(0n);
-  };
-
   const connectWallet = async (connectorId?: string) => {
     const connector =
       connectors.find((c) => c.id === connectorId) ??
       connectors.find((c) => c.ready) ??
       connectors[0];
     if (!connector) {
-      setStatus({
-        tone: "bad",
-        message: "No wallet connector available.",
-      });
+      toast.error("No wallet connector available.");
+      setStatus({ tone: "bad", message: "No wallet connector available." });
       return;
     }
     try {
+      toast.loading("Connecting wallet…");
       setStatus({ tone: "info", message: "Connecting wallet…" });
       await connect({ connector, chainId: CHAIN_ID });
       setShowProviderModal(false);
+      toast.dismiss();
+      toast.success("Wallet connected successfully!");
     } catch (err: any) {
       console.error(err);
+      toast.dismiss();
+      toast.error(err?.message || "Unable to connect wallet.");
       setStatus({
         tone: "bad",
         message: err?.message || "Unable to connect wallet.",
@@ -216,240 +422,77 @@ export default function HomePage() {
   const disconnectWallet = () => {
     resetUi();
     disconnect();
+    toast.info("Disconnected. Connect again when ready.");
     setStatus({
       tone: "info",
       message: "Disconnected. Select a wallet provider and connect again.",
     });
   };
 
-  const refreshReserves = async (addr?: string) => {
-    const target = addr ?? account;
-    try {
-      const [reserves, bal] = await Promise.all([
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "getReserves",
-        }),
-        target
-          ? readContract(wagmiConfig, {
-            address: CONTRACT_ADDRESS as `0x${string}`,
-            abi: DEMO_ABI,
-            functionName: "balanceOf",
-            args: [target as `0x${string}`],
-          })
-          : Promise.resolve(0n),
-      ]);
-      const tuple = reserves as readonly [bigint, bigint];
-      setReserveEth(BigInt(tuple[0]));
-      setReserveDemo(BigInt(tuple[1]));
-      if (typeof bal === "bigint") {
-        setDemoBalance(bal);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const refreshOnChain = async (addr?: string) => {
-    const target = addr ?? account;
-    if (!target) return;
-    try {
-      const [claimed, inviter, created, count, free, max, slots] = await Promise.all([
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "hasClaimed",
-          args: [target as `0x${string}`],
-        }),
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "invitedBy",
-          args: [target as `0x${string}`],
-        }),
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "invitesCreated",
-          args: [target as `0x${string}`],
-        }),
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "claimCount",
-        }),
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "FREE_CLAIMS",
-        }),
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "MAX_INVITES",
-        }),
-        readContract(wagmiConfig, {
-          address: CONTRACT_ADDRESS as `0x${string}`,
-          abi: DEMO_ABI,
-          functionName: "getInvitations",
-          args: [target as `0x${string}`],
-        }),
-      ]);
-      const invitees =
-        (Array.isArray((slots as any)[0]) ? ((slots as any)[0] as string[]) : []) || [];
-      const used =
-        (Array.isArray((slots as any)[1]) ? ((slots as any)[1] as boolean[]) : []) || [];
-      const parsedSlots =
-        invitees?.map((inv, idx) => ({
-          invitee: inv && inv !== ZeroAddress ? inv : null,
-          used: Boolean(used?.[idx]),
-        })) ?? [];
-
-      setHasClaimed(Boolean(claimed));
-      setInvitedBy((inviter as string) === ZeroAddress ? null : (inviter as string));
-      setInvitesCreated(Number(created));
-      setClaimCount(Number(count));
-      setFreeClaims(Number(free));
-      setMaxInvites(Number(max));
-      setInvitationSlots(parsedSlots);
-      await refreshReserves(target);
-    } catch (err: any) {
-      console.error(err);
-      setStatus({
-        tone: "bad",
-        message: err?.message || "Failed to read on-chain state.",
-      });
-    }
-  };
-
-  const refreshProof = async (addressOverride?: string) => {
-    const target = addressOverride || account;
-    if (!target) {
-      setStatus({ tone: "info", message: "Connect your wallet to fetch proof." });
-      return;
-    }
-    setCheckingProof(true);
-    setProof(null);
-    try {
-      const res = await fetch(`${API_BASE}/proof/${target}`);
-      if (!res.ok) {
-        const text = await res.text();
-        setStatus({
-          tone: "bad",
-          message: `Not in airdrop list (${text || res.status}).`,
-        });
-        setProof(null);
-        return;
-      }
-      const data: ProofResponse = await res.json();
-      const normalizedTarget = getAddress(target);
-      const proofAddress = getAddress(data.address);
-      if (normalizedTarget !== proofAddress) {
-        setStatus({
-          tone: "bad",
-          message: `Proof is for ${shorten(proofAddress)}. Connect that wallet to claim.`,
-        });
-        setProof(null);
-        return;
-      }
-
-      setProof(data);
-
-      let claimed = hasClaimed;
-      let inviterAddr: string | null = invitedBy;
-      try {
-        const [claimedOnChain, inviterOnChain] = await Promise.all([
-          readContract(wagmiConfig, {
-            address: CONTRACT_ADDRESS as `0x${string}`,
-            abi: DEMO_ABI,
-            functionName: "hasClaimed",
-            args: [target as `0x${string}`],
-          }),
-          readContract(wagmiConfig, {
-            address: CONTRACT_ADDRESS as `0x${string}`,
-            abi: DEMO_ABI,
-            functionName: "invitedBy",
-            args: [target as `0x${string}`],
-          }),
-        ]);
-        claimed = Boolean(claimedOnChain);
-        setHasClaimed(claimed);
-        inviterAddr =
-          (inviterOnChain as string) === ZeroAddress ? null : (inviterOnChain as string);
-        setInvitedBy(inviterAddr);
-      } catch (innerErr) {
-        console.error(innerErr);
-      }
-
-      if (claimed) {
-        setStatus({
-          tone: "info",
-          message: "Proof found. This wallet has already claimed.",
-        });
-      } else if (invitesRequired && !inviterAddr) {
-        setStatus({
-          tone: "info",
-          message: "You are qualified, but you need an invitation to claim right now.",
-        });
-      } else {
-        setStatus({
-          tone: "good",
-          message: "Proof found. You can claim now.",
-        });
-      }
-    } catch (err: any) {
-      console.error(err);
-      setStatus({
-        tone: "bad",
-        message: err?.message || "Failed to fetch proof.",
-      });
-    } finally {
-      setCheckingProof(false);
-    }
-  };
-
   const claim = async () => {
     if (!proof || !account) return;
     if (invitesRequired && !invitedBy) {
+      toast.error("An invitation is required to claim now.");
       setStatus({ tone: "bad", message: "An invitation is required to claim now." });
       return;
     }
+    
     const recipientAddr = recipient.trim() || account;
-    if (!isAddress(recipientAddr) || recipientAddr === ZeroAddress) {
+    
+    // Validate address
+    const validation = addressSchema.safeParse(recipientAddr);
+    if (!validation.success) {
+      toast.error("Enter a valid recipient address.");
       setStatus({ tone: "bad", message: "Enter a valid recipient address." });
       return;
     }
+    
+    if (recipientAddr === ZeroAddress) {
+      toast.error("Cannot send to zero address.");
+      setStatus({ tone: "bad", message: "Enter a valid recipient address." });
+      return;
+    }
+    
     if (chain?.id !== CHAIN_ID && switchChain) {
       try {
         await switchChain({ chainId: CHAIN_ID });
       } catch (err: any) {
+        toast.error("Switch to Sepolia to claim.");
         setStatus({ tone: "bad", message: "Switch to Sepolia to claim." });
         return;
       }
     }
+    
     try {
       setClaiming(true);
+      const toastId = toast.loading("Submitting claim transaction…");
       setStatus({ tone: "info", message: "Submitting claim transaction…" });
+      
       const hash = await writeContract(wagmiConfig, {
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: DEMO_ABI,
         functionName: "claimTo",
-        args: [recipientAddr as `0x${string}`, proof.proof.map((p) => p.hash), proof.proof_flags],
+        args: [recipientAddr as `0x${string}`, proof.proof.map((p) => p.hash) as `0x${string}`[], proof.proof_flags],
         account: account as `0x${string}`,
       });
+      
+      toast.loading(`Tx sent: ${hash.slice(0, 10)}… waiting for confirmation.`, { id: toastId });
       setStatus({
         tone: "info",
         message: `Tx sent: ${hash.slice(0, 10)}… waiting for confirmation.`,
       });
+      
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash });
       }
+      
+      toast.success("Claim confirmed! DEMO minted.", { id: toastId });
       setStatus({ tone: "good", message: "Claim confirmed! DEMO minted." });
       setHasClaimed(true);
       await refreshOnChain(account);
     } catch (err: any) {
       console.error(err);
+      toast.error(err?.message || "Claim failed.");
       setStatus({
         tone: "bad",
         message: err?.message || "Claim failed.",

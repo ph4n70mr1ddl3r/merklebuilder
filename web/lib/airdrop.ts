@@ -1,12 +1,10 @@
 import { parseAbi } from "viem";
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://18.143.177.167:3000";
-export const CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ??
-  "0x20E6EaD47195aBE822B6414F507df0EA1876EA34";
-export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "11155111");
-export const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME ?? "Sepolia";
+// Re-export types from centralized types file
+export type { ProofNode, ProofResponse } from "./types";
+
+// Re-export environment variables from validated env
+export { API_BASE, CONTRACT_ADDRESS, CHAIN_ID, CHAIN_NAME } from "./env";
 
 export const DEMO_ABI = parseAbi([
   "function claim(bytes32[] proof, bool[] proofFlags)",
@@ -32,20 +30,3 @@ export const DEMO_ABI = parseAbi([
   "function symbol() view returns (string)",
   "function isEligible(address account, bytes32[] proof, bool[] proofFlags) view returns (bool)",
 ]);
-
-export type ProofNode = {
-  hash: string;
-  side?: "left" | "right";
-  level?: number;
-  sibling_index?: number;
-};
-
-export type ProofResponse = {
-  address: string;
-  index: number;
-  total: number;
-  leaf: string;
-  root: string;
-  proof: ProofNode[];
-  proof_flags: boolean[];
-};

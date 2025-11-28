@@ -6,7 +6,7 @@ import clsx from "clsx";
 type ProviderModalProps = {
   open: boolean;
   onClose: () => void;
-  connectors: { id: string; name: string; ready?: boolean }[];
+  connectors: readonly any[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onConnect: () => void;
