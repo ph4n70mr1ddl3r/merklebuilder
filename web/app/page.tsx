@@ -683,15 +683,6 @@ export default function HomePage() {
                 <span className="leading-relaxed">{status.message}</span>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-semibold text-slate-200">How it works</p>
-                <ol className="mt-3 space-y-2 text-sm text-slate-300">
-                  <li>1. Connect wallet on {CHAIN_NAME}.</li>
-                  <li>2. Refresh status to check if you can claim.</li>
-                  <li>3. Claim on-chain if eligible.</li>
-                  <li>4. After claiming, share invites when the invite phase starts.</li>
-                </ol>
-              </div>
             </div>
           </div>
         ) : (
