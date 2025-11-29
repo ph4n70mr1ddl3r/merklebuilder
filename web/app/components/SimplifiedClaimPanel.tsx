@@ -14,7 +14,6 @@ type SimplifiedClaimPanelProps = {
   claimError?: string | null;
   proof: ProofResponse | null;
   invitedBy: string | null;
-  inviteFromUrl: string | null;
   invitesRequired: boolean;
   poolFunded: boolean;
   isFetchingState?: boolean;
@@ -36,7 +35,6 @@ export function SimplifiedClaimPanel({
   claimError,
   proof,
   invitedBy,
-  inviteFromUrl,
   invitesRequired,
   poolFunded,
   isFetchingState = false,
@@ -238,22 +236,11 @@ export function SimplifiedClaimPanel({
                   <span className="font-semibold text-amber-400">However</span>, the free claim period has ended. You now need an invitation from someone who already claimed.
                 </p>
                 
-                {inviteFromUrl && (
-                  <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/5 p-4 mb-4">
-                    <p className="text-sm font-semibold text-cyan-300 mb-1">🔗 Invite link detected!</p>
-                    <p className="text-sm text-slate-300">
-                      You came from <span className="font-mono text-cyan-400">{shorten(inviteFromUrl)}</span>&apos;s invite link.
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      They need to create an invitation for your specific address before you can claim.
-                    </p>
-                  </div>
-                )}
-                
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4 mb-4">
                   <p className="text-sm font-semibold text-slate-200 mb-2">How to get invited:</p>
                   <ol className="space-y-1 text-sm text-slate-300 list-decimal list-inside">
                     <li>Ask a friend who has already claimed to create an invitation for you</li>
+                    <li>They must enter your address and create the invitation on-chain</li>
                     <li>They can create up to 5 invitations in the &quot;Invite & Trade&quot; section</li>
                     <li>Once invited, return here to claim your tokens</li>
                   </ol>

@@ -66,7 +66,6 @@ export default function HomePage() {
   const [slippage, setSlippage] = useState("1.0");
   const [trading, setTrading] = useState(false);
   const [userIntent, setUserIntent] = useState<UserIntent | null>(null);
-  const [inviteFromUrl, setInviteFromUrl] = useState<string | null>(null);
 
   // Derived state
   const invitesRequired = airdrop.claimCount !== null ? airdrop.claimCount >= airdrop.freeClaims : false;
@@ -125,21 +124,6 @@ export default function HomePage() {
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, chain, switchChain]);
-
-  // Parse URL params for invite links
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const inviteParam = params.get("invite");
-      if (inviteParam && isAddress(inviteParam)) {
-        const normalized = getAddress(inviteParam);
-        setInviteFromUrl(normalized);
-        toast.info(`You've been invited by ${shorten(normalized)}!`);
-        setUserIntent("claim");
-      }
-    } catch {}
-  }, []);
 
   // Persist slippage
   useEffect(() => {
@@ -616,7 +600,6 @@ export default function HomePage() {
           claimError={claimError}
           proof={airdrop.proof}
           invitedBy={airdrop.invitedBy}
-          inviteFromUrl={inviteFromUrl}
           invitesRequired={invitesRequired}
           poolFunded={poolFunded}
           isFetchingState={false}
@@ -648,7 +631,6 @@ export default function HomePage() {
           refreshOnChain={airdrop.refreshOnChain}
           setShowProviderModal={setShowProviderModal}
           copyToClipboard={copyToClipboard}
-          copyInviteLink={copyInviteLink}
           copiedKey={copiedKey}
           revokingSlot={revokingSlot}
           revokeInvite={revokeInvite}

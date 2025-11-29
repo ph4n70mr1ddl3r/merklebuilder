@@ -21,7 +21,6 @@ type InvitesPanelProps = {
   refreshOnChain: (addr?: string) => void;
   setShowProviderModal: (value: boolean) => void;
   copyToClipboard: (value: string, key: string) => void;
-  copyInviteLink: () => void;
   copiedKey: string | null;
   revokingSlot: number | null;
   revokeInvite: (slotIndex: number) => void;
@@ -43,7 +42,6 @@ export function InvitesPanel({
   refreshOnChain,
   setShowProviderModal,
   copyToClipboard,
-  copyInviteLink,
   copiedKey,
   revokingSlot,
   revokeInvite,
@@ -122,20 +120,7 @@ export function InvitesPanel({
                 />
               </div>
               
-              {/* Share invite link */}
-              <div className="mt-4 pt-3 border-t border-white/10">
-                <p className="text-xs font-semibold text-slate-300 mb-2">Share your invite link</p>
-                <button
-                  onClick={copyInviteLink}
-                  className="w-full rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5 flex items-center justify-center gap-2"
-                >
-                  <span>🔗</span>
-                  <span>{copiedKey === "invite-link" ? "Link Copied!" : "Copy Invite Link"}</span>
-                </button>
-                <p className="mt-2 text-[11px] text-slate-500">Friends who click your link will have your address pre-filled as their inviter.</p>
-              </div>
-              
-              <p className="mt-3 text-xs text-slate-400">Invite tree pays down five levels; make sure you share with trusted wallets.</p>
+              <p className="mt-3 text-xs text-slate-400">Invite tree pays down five levels. You must create invitations on-chain before invitees can claim.</p>
             </div>
 
             <div className="lg:col-span-2 rounded-xl border border-white/10 bg-white/5 p-4">
