@@ -233,7 +233,7 @@ export function SimplifiedClaimPanel({
                   Great news! <span className="font-mono text-emerald-400">{shorten(account)}</span> qualifies for the airdrop.
                 </p>
                 <p className="text-sm text-slate-300 mb-4">
-                  <span className="font-semibold text-amber-400">However</span>, the free claim period has ended. You now need an invitation from someone who already claimed.
+                  <span className="font-semibold text-amber-400">However</span>, the open claim period has ended. You now need an invitation from someone who already claimed.
                 </p>
                 
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4 mb-4">
@@ -354,13 +354,13 @@ export function SimplifiedClaimPanel({
                     onClick={onSwitchToInvite}
                     className="flex-1 rounded-lg bg-gradient-to-r from-cyan-400 to-cyan-500 px-6 py-3 font-semibold text-cyan-950 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5"
                   >
-                    👥 Invite Friends
+                    Invite
                   </button>
                   <button
                     onClick={onSwitchToTrade}
                     className="flex-1 rounded-lg bg-gradient-to-r from-orange-400 to-orange-500 px-6 py-3 font-semibold text-orange-950 shadow-lg shadow-orange-500/30 transition hover:-translate-y-0.5"
                   >
-                    📈 Trade Tokens
+                    Trade
                   </button>
                 </div>
               </div>

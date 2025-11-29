@@ -15,7 +15,7 @@ import { InvitesPanel } from "./components/InvitesPanel";
 import { ProviderModal } from "./components/ProviderModal";
 import { PersonaSelector, UserIntent } from "./components/PersonaSelector";
 import { SimplifiedClaimPanel } from "./components/SimplifiedClaimPanel";
-import { EnhancedMarketPanel } from "./components/EnhancedMarketPanel";
+import { SimplifiedMarketPanel } from "./components/SimplifiedMarketPanel";
 import { WalletStatus } from "./components/WalletStatus";
 import { formatToken, shorten } from "../lib/format";
 import { addressSchema } from "../lib/validators";
@@ -92,15 +92,12 @@ export default function HomePage() {
     const eth = Number(formatEther(market.reserveEth));
     const demo = Number(formatEther(market.reserveDemo));
     if (demo === 0) return "—";
-    return (eth / demo).toFixed(6);
-  }, [poolFunded, poolHasDemo, market.reserveEth, market.reserveDemo]);
-
-  const priceDemoPerEth = useMemo(() => {
-    if (!poolFunded || !poolHasDemo) return "—";
-    const eth = Number(formatEther(market.reserveEth));
-    if (eth === 0) return "—";
-    const demo = Number(formatEther(market.reserveDemo));
-    return (demo / eth).toFixed(2);
+    const price = eth / demo;
+    // Format with appropriate precision
+    if (price < 0.0001) return price.toExponential(2);
+    if (price < 0.01) return price.toFixed(6);
+    if (price < 1) return price.toFixed(4);
+    return price.toFixed(4);
   }, [poolFunded, poolHasDemo, market.reserveEth, market.reserveDemo]);
 
   // Initialize on account change
@@ -543,10 +540,10 @@ export default function HomePage() {
   const heroStats = {
     claimCountText: airdrop.claimCount !== null ? `${airdrop.claimCount} claimed` : "Checking…",
     freeClaimsText: freeClaimsRemaining !== null
-      ? `${freeClaimsRemaining} free claims left before invites lock in.`
+      ? `${freeClaimsRemaining} open claims left before invites lock in.`
       : "Fetch your proof to see your lane.",
     invitesText: `${airdrop.invitesCreated} / ${airdrop.maxInvites} slots used`,
-    invitesHint: invitesOpen ? "Invite phase is live; reserve slots before they're gone." : "Invite phase opens after free-claim window fills.",
+    invitesHint: invitesOpen ? "Invite phase is live; reserve slots before they're gone." : "Invite phase opens after open-claim window fills.",
     marketText: poolFunded && poolHasDemo ? `${priceEthPerDemo} ETH / DEMO` : "Waiting for liquidity",
     reserveText: `Reserves: ${formatToken(market.reserveEth)} ETH · ${formatToken(market.reserveDemo)} DEMO`,
   };
@@ -557,17 +554,6 @@ export default function HomePage() {
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500 blur-[120px] opacity-20" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-emerald-500 blur-[120px] opacity-20" />
 
-      {/* Wallet Status Bar */}
-      {account && (
-        <WalletStatus
-          account={account}
-          ethBalance={market.ethBalance}
-          demoBalance={market.demoBalance}
-          chainName={CHAIN_NAME}
-          onDisconnect={disconnectWallet}
-          onSwitchWallet={() => setShowProviderModal(true)}
-        />
-      )}
 
       <Hero
         chainName={CHAIN_NAME}
@@ -641,13 +627,12 @@ export default function HomePage() {
 
       {/* Trade Tokens */}
       {userIntent === 'trade' && (
-        <EnhancedMarketPanel
+        <SimplifiedMarketPanel
           account={account}
           contractAddress={CONTRACT_ADDRESS}
           reserveEth={market.reserveEth}
           reserveDemo={market.reserveDemo}
           priceEthPerDemo={priceEthPerDemo}
-          priceDemoPerEth={priceDemoPerEth}
           poolFunded={poolFunded}
           poolHasDemo={poolHasDemo}
           slippage={slippage}
@@ -656,24 +641,12 @@ export default function HomePage() {
           handleBuyDemo={handleBuyExactDemo}
           handleSellDemo={handleSellExactDemo}
           handleSpendEth={handleSpendExactEth}
-          handleReceiveEth={handleReceiveExactEth}
           demoBalance={market.demoBalance}
           trading={trading}
           setShowProviderModal={setShowProviderModal}
         />
       )}
 
-      {/* Back button */}
-      {userIntent && (
-        <div className="mx-auto max-w-3xl px-4 py-6">
-          <button
-            onClick={() => setUserIntent(null)}
-            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5"
-          >
-            ← Back to Main Menu
-          </button>
-        </div>
-      )}
 
       <ProviderModal
         open={showProviderModal}
