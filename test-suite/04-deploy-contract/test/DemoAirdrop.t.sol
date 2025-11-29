@@ -2,9 +2,12 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
+import "forge-std/StdStorage.sol";
 import "contracts/DemoAirdrop.sol";
 
 contract DemoAirdropTest is Test {
+    using stdStorage for StdStorage;
+    
     DemoAirdrop public airdrop;
     
     address public alice = address(0x1);
@@ -108,12 +111,16 @@ contract DemoAirdropTest is Test {
     }
 
     function testCannotInviteSelf() public {
-        // Mock alice as having claimed
-        vm.store(
-            address(airdrop),
-            keccak256(abi.encode(alice, 4)), // hasClaimed mapping slot
-            bytes32(uint256(1))
-        );
+        // Mock alice as having claimed AND set claimCount >= FREE_CLAIMS
+        stdstore
+            .target(address(airdrop))
+            .sig("hasClaimed(address)")
+            .with_key(alice)
+            .checked_write(true);
+        stdstore
+            .target(address(airdrop))
+            .sig("claimCount()")
+            .checked_write(2);
         
         vm.expectRevert("DEMO: invalid invitee");
         vm.prank(alice);
@@ -121,6 +128,17 @@ contract DemoAirdropTest is Test {
     }
 
     function testCannotInviteZeroAddress() public {
+        // Mock alice as having claimed AND set claimCount >= FREE_CLAIMS
+        stdstore
+            .target(address(airdrop))
+            .sig("hasClaimed(address)")
+            .with_key(alice)
+            .checked_write(true);
+        stdstore
+            .target(address(airdrop))
+            .sig("claimCount()")
+            .checked_write(2);
+        
         vm.expectRevert("DEMO: invalid invitee");
         vm.prank(alice);
         airdrop.createInvitation(address(0));
@@ -131,12 +149,17 @@ contract DemoAirdropTest is Test {
     // ========================================
     
     function testPreviewBuyCalculatesCorrectly() public {
-        // Add some DEMO to reserves for testing
-        vm.store(
-            address(airdrop),
-            bytes32(uint256(10)), // reserveDEMO slot
-            bytes32(uint256(100 ether))
-        );
+        // Add some DEMO to reserves using stdStorage
+        stdstore
+            .target(address(airdrop))
+            .sig("reserveDEMO()")
+            .checked_write(100 ether);
+        // Give contract the DEMO balance to match reserves
+        stdstore
+            .target(address(airdrop))
+            .sig("balanceOf(address)")
+            .with_key(address(airdrop))
+            .checked_write(100 ether);
         
         uint256 ethIn = 0.1 ether;
         uint256 demoOut = airdrop.previewBuy(ethIn);
@@ -147,12 +170,17 @@ contract DemoAirdropTest is Test {
     }
 
     function testPreviewSellCalculatesCorrectly() public {
-        // Add some DEMO to reserves
-        vm.store(
-            address(airdrop),
-            bytes32(uint256(10)), // reserveDEMO slot
-            bytes32(uint256(100 ether))
-        );
+        // Add some DEMO to reserves using stdStorage
+        stdstore
+            .target(address(airdrop))
+            .sig("reserveDEMO()")
+            .checked_write(100 ether);
+        // Give contract the DEMO balance to match reserves
+        stdstore
+            .target(address(airdrop))
+            .sig("balanceOf(address)")
+            .with_key(address(airdrop))
+            .checked_write(100 ether);
         
         uint256 demoIn = 10 ether;
         uint256 ethOut = airdrop.previewSell(demoIn);
@@ -162,19 +190,17 @@ contract DemoAirdropTest is Test {
     }
 
     function testBuyDemoUpdatesReserves() public {
-        // Setup: Add DEMO to reserves and give alice DEMO balance
-        vm.store(
-            address(airdrop),
-            bytes32(uint256(10)), // reserveDEMO slot
-            bytes32(uint256(100 ether))
-        );
-        
+        // Setup: Add DEMO to reserves using stdStorage
+        stdstore
+            .target(address(airdrop))
+            .sig("reserveDEMO()")
+            .checked_write(100 ether);
         // Give contract the DEMO balance
-        vm.store(
-            address(airdrop),
-            keccak256(abi.encode(address(airdrop), 0)), // balanceOf[contract]
-            bytes32(uint256(100 ether))
-        );
+        stdstore
+            .target(address(airdrop))
+            .sig("balanceOf(address)")
+            .with_key(address(airdrop))
+            .checked_write(100 ether);
         
         uint256 ethIn = 0.1 ether;
         uint256 expectedDemoOut = airdrop.previewBuy(ethIn);
@@ -198,12 +224,17 @@ contract DemoAirdropTest is Test {
     }
 
     function testRevertOnSlippageExceeded() public {
-        // Setup reserves
-        vm.store(
-            address(airdrop),
-            bytes32(uint256(10)),
-            bytes32(uint256(100 ether))
-        );
+        // Setup reserves using stdStorage
+        stdstore
+            .target(address(airdrop))
+            .sig("reserveDEMO()")
+            .checked_write(100 ether);
+        // Give contract the DEMO balance to match reserves
+        stdstore
+            .target(address(airdrop))
+            .sig("balanceOf(address)")
+            .with_key(address(airdrop))
+            .checked_write(100 ether);
         
         uint256 ethIn = 0.1 ether;
         uint256 expectedOut = airdrop.previewBuy(ethIn);
@@ -225,17 +256,12 @@ contract DemoAirdropTest is Test {
     // ========================================
     
     function testTransferWorks() public {
-        // Give alice some tokens
-        vm.store(
-            address(airdrop),
-            keccak256(abi.encode(alice, 0)), // balanceOf[alice]
-            bytes32(uint256(100 ether))
-        );
-        vm.store(
-            address(airdrop),
-            bytes32(uint256(1)), // totalSupply
-            bytes32(uint256(100 ether))
-        );
+        // Give alice some tokens using stdStorage
+        stdstore
+            .target(address(airdrop))
+            .sig("balanceOf(address)")
+            .with_key(alice)
+            .checked_write(100 ether);
         
         vm.prank(alice);
         bool success = airdrop.transfer(bob, 50 ether);
@@ -246,17 +272,12 @@ contract DemoAirdropTest is Test {
     }
 
     function testApproveAndTransferFrom() public {
-        // Give alice some tokens
-        vm.store(
-            address(airdrop),
-            keccak256(abi.encode(alice, 0)),
-            bytes32(uint256(100 ether))
-        );
-        vm.store(
-            address(airdrop),
-            bytes32(uint256(1)),
-            bytes32(uint256(100 ether))
-        );
+        // Give alice some tokens using stdStorage
+        stdstore
+            .target(address(airdrop))
+            .sig("balanceOf(address)")
+            .with_key(alice)
+            .checked_write(100 ether);
         
         vm.prank(alice);
         airdrop.approve(bob, 50 ether);
@@ -297,12 +318,17 @@ contract DemoAirdropTest is Test {
         // Bound inputs to reasonable range
         ethIn = bound(ethIn, 0.001 ether, 10 ether);
         
-        // Add DEMO reserves
-        vm.store(
-            address(airdrop),
-            bytes32(uint256(10)),
-            bytes32(uint256(1000 ether))
-        );
+        // Add DEMO reserves using stdStorage
+        stdstore
+            .target(address(airdrop))
+            .sig("reserveDEMO()")
+            .checked_write(1000 ether);
+        // Give contract the DEMO balance to match reserves
+        stdstore
+            .target(address(airdrop))
+            .sig("balanceOf(address)")
+            .with_key(address(airdrop))
+            .checked_write(1000 ether);
         
         uint256 demoOut = airdrop.previewBuy(ethIn);
         
