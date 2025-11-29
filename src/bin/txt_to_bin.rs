@@ -154,16 +154,34 @@ fn hash_pair(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
 fn build_layers(
     mut current: Vec<[u8; 32]>,
 ) -> Result<Vec<Vec<[u8; 32]>>, Box<dyn std::error::Error>> {
+    if current.is_empty() {
+        return Err("Cannot build tree from empty leaf set".into());
+    }
+
     let mut layers = Vec::new();
     layers.push(current.clone());
 
-    if current.len() <= 1 {
+    // Single leaf becomes its own root
+    if current.len() == 1 {
         return Ok(layers);
     }
 
     let total_hashes = total_hash_ops(current.len());
-    let progress = build_progress(total_hashes as u64);
-    let update_every = progress_update_interval(total_hashes);
+    
+    // Only show progress bar for larger datasets
+    let show_progress = total_hashes >= 100;
+    let progress = if show_progress {
+        Some(build_progress(total_hashes as u64))
+    } else {
+        None
+    };
+    
+    let update_every = if show_progress {
+        progress_update_interval(total_hashes)
+    } else {
+        usize::MAX // Never update
+    };
+    
     let mut done = 0usize;
 
     while current.len() > 1 {
@@ -172,15 +190,20 @@ fn build_layers(
             let right = if chunk.len() == 2 { chunk[1] } else { chunk[0] };
             next.push(hash_pair(&chunk[0], &right));
             done = done.saturating_add(1);
-            if done % update_every == 0 || done == total_hashes {
-                progress.set_position(done as u64);
+            if let Some(ref p) = progress {
+                if done % update_every == 0 || done == total_hashes {
+                    p.set_position(done as u64);
+                }
             }
         }
         layers.push(next.clone());
         current = next;
     }
 
-    progress.finish_and_clear();
+    if let Some(p) = progress {
+        p.finish_and_clear();
+    }
+    
     Ok(layers)
 }
 
@@ -219,7 +242,8 @@ fn build_progress(len: u64) -> ProgressBar {
 }
 
 fn progress_update_interval(count: usize) -> usize {
-    // Update roughly every 1% but not more frequently than every 1,000 items.
+    // Update roughly every 1% but not more frequently than every 100 items.
+    // This allows progress for smaller datasets while not spamming on large ones.
     let one_percent = (count / 100).max(1);
-    one_percent.clamp(1_000, usize::MAX)
+    one_percent.clamp(100, usize::MAX)
 }

@@ -622,6 +622,7 @@ dependencies = [
  "hex",
  "indicatif",
  "k256",
+ "rand_chacha",
  "serde",
  "serde_json",
  "sha3",

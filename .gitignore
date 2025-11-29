@@ -3,6 +3,26 @@
 big.txt
 accounts.txt
 final.txt
+
+# Frontend
 web/.next
 web/node_modules
 web/.turbo
+web/.env.local
+
+# Test suite - generated files
+test-suite/fixtures/
+test-suite/03-test-api/node_modules/
+test-suite/03-test-api/package-lock.json
+test-suite/06-test-frontend/node_modules/
+test-suite/06-test-frontend/package-lock.json
+test-suite/04-deploy-contract/out/
+test-suite/04-deploy-contract/cache/
+test-suite/04-deploy-contract/lib/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
