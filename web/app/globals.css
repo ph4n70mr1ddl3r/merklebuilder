@@ -16,10 +16,37 @@
 @layer base {
   * {
     border-color: hsl(var(--border));
+    /* Remove tap highlight on mobile */
+    -webkit-tap-highlight-color: transparent;
   }
+  
+  html {
+    /* Prevent text size adjustment on iOS when orientation changes */
+    -webkit-text-size-adjust: 100%;
+    /* Enable smooth scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+  }
+  
   body {
     @apply bg-slate-950 text-slate-100;
     min-height: 100vh;
+    /* Safe area insets for iOS notch/home indicator */
+    min-height: 100dvh; /* Use dynamic viewport height */
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-top: env(safe-area-inset-top);
+    /* Prevent overscroll bounce on mobile */
+    overscroll-behavior-y: none;
+  }
+
+  /* Improve input handling on mobile */
+  input,
+  textarea,
+  select,
+  button {
+    /* Prevent iOS zoom on input focus by ensuring 16px minimum */
+    font-size: max(16px, 1rem);
   }
 }
 
@@ -27,5 +54,11 @@
 @layer utilities {
   .minimal-card {
     @apply border border-slate-800 bg-slate-900 rounded;
+  }
+  
+  /* Mobile-optimized touch targets */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
   }
 }

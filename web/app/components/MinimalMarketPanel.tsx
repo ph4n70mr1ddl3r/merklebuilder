@@ -199,10 +199,11 @@ export function MinimalMarketPanel({
             <div className="relative">
               <input
                 type="text"
+                inputMode="decimal"
                 value={inputAmount}
                 onChange={(e) => handleInputChange(e.target.value)}
                 placeholder="0.0"
-                className="w-full bg-slate-950 border border-slate-800 rounded px-4 py-3 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded px-4 py-3 pr-16 sm:pr-20 text-slate-100 focus:border-emerald-500 focus:outline-none"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                 {isBuying ? 'ETH' : 'DEMO'}
@@ -210,7 +211,8 @@ export function MinimalMarketPanel({
               {!isBuying && demoBalance > 0n && (
                 <button
                   onClick={() => handleInputChange(formatEther(demoBalance))}
-                  className="absolute right-16 top-1/2 -translate-y-1/2 text-xs text-emerald-400 hover:text-emerald-300"
+                  className="absolute right-14 sm:right-16 top-1/2 -translate-y-1/2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition px-2 py-1 rounded hover:bg-emerald-400/10 touch-target"
+                  aria-label="Set to maximum DEMO balance"
                 >
                   MAX
                 </button>
@@ -241,10 +243,11 @@ export function MinimalMarketPanel({
             <div className="relative">
               <input
                 type="text"
+                inputMode="decimal"
                 value={outputAmount}
                 onChange={(e) => handleOutputChange(e.target.value)}
                 placeholder="0.0"
-                className="w-full bg-slate-950 border border-slate-800 rounded px-4 py-3 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded px-4 py-3 pr-16 text-slate-100 focus:border-emerald-500 focus:outline-none"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                 {isBuying ? 'DEMO' : 'ETH'}
@@ -258,12 +261,12 @@ export function MinimalMarketPanel({
           {/* Slippage */}
           <div>
             <label className="block text-sm text-slate-400 mb-2">Slippage (%)</label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {['0.5', '1.0', '2.0'].map((preset) => (
                 <button
                   key={preset}
                   onClick={() => setSlippage(preset)}
-                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                  className={`px-3 py-2 text-xs rounded transition-colors touch-target ${
                     slippage === preset
                       ? 'bg-emerald-500 text-white'
                       : 'border border-slate-700 text-slate-400 hover:border-slate-600'
@@ -274,10 +277,11 @@ export function MinimalMarketPanel({
               ))}
               <input
                 type="text"
+                inputMode="decimal"
                 value={slippage}
                 onChange={(e) => setSlippage(e.target.value)}
                 placeholder="1.0"
-                className="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-1 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none"
+                className="flex-1 min-w-[80px] bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-100 focus:border-emerald-500 focus:outline-none"
               />
             </div>
           </div>
