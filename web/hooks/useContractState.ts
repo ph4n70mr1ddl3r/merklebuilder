@@ -80,11 +80,16 @@ export function useContractState(account?: string) {
         }
     }, [account]);
 
-    return useQuery({
+    const query = useQuery({
         queryKey: ["contractState", account],
         queryFn: fetchContractState,
         enabled: !!account,
         refetchInterval: CONTRACT_POLL_INTERVAL,
         staleTime: 5000,
     });
+
+    return {
+        ...query,
+        isFetching: query.isFetching || query.isRefetching,
+    };
 }

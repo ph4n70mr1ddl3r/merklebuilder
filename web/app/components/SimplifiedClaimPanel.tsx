@@ -11,13 +11,16 @@ type SimplifiedClaimPanelProps = {
   hasClaimed: boolean;
   checking: boolean;
   claiming: boolean;
+  claimError?: string | null;
   proof: ProofResponse | null;
   invitedBy: string | null;
   inviteFromUrl: string | null;
   invitesRequired: boolean;
   poolFunded: boolean;
+  isFetchingState?: boolean;
   onCheckEligibility: () => void;
   onClaim: () => void;
+  onRetryClaim?: () => void;
   onSwitchToInvite: () => void;
   onSwitchToTrade: () => void;
   setShowProviderModal: (show: boolean) => void;
@@ -30,13 +33,16 @@ export function SimplifiedClaimPanel({
   hasClaimed,
   checking,
   claiming,
+  claimError,
   proof,
   invitedBy,
   inviteFromUrl,
   invitesRequired,
   poolFunded,
+  isFetchingState = false,
   onCheckEligibility,
   onClaim,
+  onRetryClaim,
   onSwitchToInvite,
   onSwitchToTrade,
   setShowProviderModal,
@@ -64,6 +70,12 @@ export function SimplifiedClaimPanel({
           <p className="text-slate-300">
             If you paid ≥0.004 ETH in gas fees on Ethereum mainnet (blocks 0-23M), you qualify for 100 DEMO tokens
           </p>
+          {isFetchingState && (
+            <div className="mt-2 flex items-center justify-center gap-2 text-sm text-cyan-400">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+              <span>Refreshing state...</span>
+            </div>
+          )}
         </div>
 
         {/* Progress Steps */}
@@ -286,20 +298,37 @@ export function SimplifiedClaimPanel({
                     </p>
                   </div>
                 )}
-                <button
-                  onClick={onClaim}
-                  disabled={!canClaim || claiming}
-                  className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-8 py-4 text-lg font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-                >
-                  {claiming ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-950 border-t-transparent" />
-                      Claiming tokens...
-                    </span>
-                  ) : (
-                    'Claim 100 DEMO Tokens'
+                {claimError && (
+                  <div className="rounded-lg border border-red-400/30 bg-red-400/5 p-3 mb-4">
+                    <p className="text-sm font-semibold text-red-300 mb-1">Claim Failed</p>
+                    <p className="text-xs text-red-200">{claimError}</p>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={onClaim}
+                    disabled={!canClaim || claiming}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-8 py-4 text-lg font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                  >
+                    {claiming ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-950 border-t-transparent" />
+                        Claiming tokens...
+                      </span>
+                    ) : (
+                      'Claim 100 DEMO Tokens'
+                    )}
+                  </button>
+                  {claimError && onRetryClaim && (
+                    <button
+                      onClick={onRetryClaim}
+                      disabled={!canClaim || claiming}
+                      className="rounded-lg border border-emerald-400/50 bg-emerald-400/10 px-4 py-3 font-semibold text-emerald-100 transition hover:-translate-y-0.5 disabled:opacity-50"
+                    >
+                      Retry
+                    </button>
                   )}
-                </button>
+                </div>
                 <p className="mt-3 text-xs text-slate-400">
                   Note: This also mints 10 DEMO to the market maker pool for liquidity
                 </p>

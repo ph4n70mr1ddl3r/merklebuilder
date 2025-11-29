@@ -15,7 +15,11 @@ use merklebuilder::merkle::{
 use serde::Serialize;
 use tokio::net::TcpListener;
 use thiserror::Error;
+use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
+use tower_governor::{
+    governor::GovernorConfigBuilder, GovernorLayer,
+};
 
 #[derive(Clone)]
 struct AppState {
@@ -174,6 +178,7 @@ async fn main() {
         layer_count,
         config.listen
     );
+    println!("Rate limit: 100 requests per minute per IP");
 
     let state = AppState {
         db_dir: Arc::new(config.data_dir.clone()),
@@ -184,11 +189,28 @@ async fn main() {
         .allow_methods([Method::GET, Method::OPTIONS])
         .allow_headers(Any);
 
+    // Rate limiting: 100 requests per minute per IP
+    let governor_config = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(2) // Allow 2 per second (burst)
+            .burst_size(10) // Allow burst of 10
+            .finish()
+            .expect("Failed to build rate limiter config"),
+    );
+
+    let governor_layer = GovernorLayer {
+        config: governor_config,
+    };
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/proof/:address", get(proof))
-        .with_state(state)
-        .layer(cors);
+        .layer(
+            ServiceBuilder::new()
+                .layer(cors)
+                .layer(governor_layer)
+        )
+        .with_state(state);
 
     let listener = match TcpListener::bind(config.listen).await {
         Ok(l) => l,

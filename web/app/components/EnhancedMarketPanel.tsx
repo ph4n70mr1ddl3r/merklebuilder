@@ -171,6 +171,32 @@ export function EnhancedMarketPanel({
     }
   }, [tradeMode, inputAmount, outputAmount, poolFunded, poolHasDemo, reserveEth, reserveDemo]);
 
+  // Calculate swap size relative to reserves
+  const swapSizePercent = useMemo(() => {
+    if (!inputAmount || !poolFunded || !poolHasDemo) return null;
+    
+    try {
+      const input = parseEther(inputAmount);
+      if (input <= 0n) return null;
+
+      const isBuying = tradeMode === 'buy-exact-demo' || tradeMode === 'spend-exact-eth';
+      
+      if (isBuying) {
+        // Buying: compare ETH input to ETH reserve
+        const ethIn = tradeMode === 'spend-exact-eth' ? input : (outputAmount || 0n);
+        if (reserveEth === 0n) return null;
+        return Number((ethIn * 10000n) / reserveEth) / 100; // percent with 2 decimals
+      } else {
+        // Selling: compare DEMO input to DEMO reserve
+        const demoIn = tradeMode === 'sell-exact-demo' ? input : (outputAmount || 0n);
+        if (reserveDemo === 0n) return null;
+        return Number((demoIn * 10000n) / reserveDemo) / 100;
+      }
+    } catch {
+      return null;
+    }
+  }, [tradeMode, inputAmount, outputAmount, poolFunded, poolHasDemo, reserveEth, reserveDemo]);
+
   const handleTrade = async () => {
     if (!account) {
       setShowProviderModal(true);
@@ -450,6 +476,25 @@ export function EnhancedMarketPanel({
                         </Tooltip>: <strong>{priceImpact.toFixed(2)}%</strong>
                         {priceImpact > 10 && ' — High impact! Consider a smaller trade.'}
                         {priceImpact > 5 && priceImpact <= 10 && ' — Moderate impact'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {/* Large Swap Warning */}
+                {swapSizePercent !== null && swapSizePercent > 1 && (
+                  <div className={`mt-2 rounded-lg p-2 text-xs ${
+                    swapSizePercent > 10
+                      ? 'bg-red-400/20 border border-red-400/40 text-red-300'
+                      : swapSizePercent > 5
+                        ? 'bg-amber-400/20 border border-amber-400/40 text-amber-300'
+                        : 'bg-blue-400/10 border border-blue-400/20 text-blue-300'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span>{swapSizePercent > 10 ? '🚨' : swapSizePercent > 5 ? '⚠️' : 'ℹ️'}</span>
+                      <span>
+                        Swap size: <strong>{swapSizePercent.toFixed(2)}%</strong> of pool reserves
+                        {swapSizePercent > 10 && ' — Very large trade! AMM state will change significantly.'}
+                        {swapSizePercent > 5 && swapSizePercent <= 10 && ' — Large trade warning'}
                       </span>
                     </div>
                   </div>

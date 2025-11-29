@@ -57,6 +57,7 @@ export default function HomePage() {
   const [showProviderModal, setShowProviderModal] = useState(false);
   const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [invitee, setInvitee] = useState("");
   const [inviting, setInviting] = useState(false);
   const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
@@ -185,6 +186,8 @@ export default function HomePage() {
       return;
     }
     
+    setClaimError(null);
+    
     const recipientAddr = recipient.trim() || account;
     const validation = addressSchema.safeParse(recipientAddr);
     if (!validation.success) {
@@ -238,12 +241,14 @@ export default function HomePage() {
       
       toast.success("🎉 Claim confirmed! DEMO minted.", { id: toastId });
       airdrop.setHasClaimed(true);
+      setClaimError(null);
       fireConfettiBurst();
       await airdrop.refreshOnChain(account);
       await market.refreshReserves(account);
     } catch (err: any) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
+      setClaimError(friendlyError);
       toast.error(
         <div className="flex flex-col gap-1">
           <span className="font-semibold">Claim failed</span>
@@ -608,13 +613,19 @@ export default function HomePage() {
           hasClaimed={airdrop.hasClaimed}
           checking={airdrop.checkingProof}
           claiming={claiming}
+          claimError={claimError}
           proof={airdrop.proof}
           invitedBy={airdrop.invitedBy}
           inviteFromUrl={inviteFromUrl}
           invitesRequired={invitesRequired}
           poolFunded={poolFunded}
+          isFetchingState={false}
           onCheckEligibility={() => airdrop.refreshProof()}
           onClaim={claim}
+          onRetryClaim={() => {
+            setClaimError(null);
+            claim();
+          }}
           onSwitchToInvite={() => setUserIntent('invite')}
           onSwitchToTrade={() => setUserIntent('trade')}
           setShowProviderModal={setShowProviderModal}
