@@ -10,13 +10,14 @@ import { parseWeb3Error, getExplorerUrl } from "../lib/errors";
 import { useAccount, useConnect, useDisconnect, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract, readContract, sendTransaction } from "wagmi/actions";
 import { wagmiConfig } from "../lib/wagmi";
-import { Hero } from "./components/Hero";
-import { InvitesPanel } from "./components/InvitesPanel";
+import { MinimalHero } from "./components/MinimalHero";
+import { MinimalInvitesPanel } from "./components/MinimalInvitesPanel";
 import { ProviderModal } from "./components/ProviderModal";
-import { PersonaSelector, UserIntent } from "./components/PersonaSelector";
-import { SimplifiedClaimPanel } from "./components/SimplifiedClaimPanel";
-import { SimplifiedMarketPanel } from "./components/SimplifiedMarketPanel";
-import { WalletStatus } from "./components/WalletStatus";
+import { MinimalPersonaSelector, UserIntent } from "./components/MinimalPersonaSelector";
+import { MinimalClaimPanel } from "./components/MinimalClaimPanel";
+import { MinimalMarketPanel } from "./components/MinimalMarketPanel";
+import { MinimalWalletPanel } from "./components/MinimalWalletPanel";
+import { MinimalInfoPanel } from "./components/MinimalInfoPanel";
 import { formatToken, shorten } from "../lib/format";
 import { addressSchema } from "../lib/validators";
 import { useAirdropData } from "../hooks/useAirdropData";
@@ -65,7 +66,7 @@ export default function HomePage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [slippage, setSlippage] = useState("1.0");
   const [trading, setTrading] = useState(false);
-  const [userIntent, setUserIntent] = useState<UserIntent | null>(null);
+  const [userIntent, setUserIntent] = useState<UserIntent>('claim');
 
   // Derived state
   const invitesRequired = airdrop.claimCount !== null ? airdrop.claimCount >= airdrop.freeClaims : false;
@@ -550,33 +551,19 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden font-sans">
-      {/* Background Effects */}
-      <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500 blur-[120px] opacity-20" />
-      <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-emerald-500 blur-[120px] opacity-20" />
-
-
-      <Hero
-        chainName={CHAIN_NAME}
-        contractAddress={CONTRACT_ADDRESS}
-        apiBase={API_BASE}
-        onPrimary={() => setUserIntent(null)}
+      <MinimalHero
         stats={heroStats}
       />
 
-      {/* Persona Selector */}
-      {!userIntent && (
-        <PersonaSelector
-          onSelectIntent={setUserIntent}
-          currentIntent={userIntent || 'claim'}
-          hasClaimed={airdrop.hasClaimed}
-          isEligible={airdrop.proof !== null}
-          hasChecked={airdrop.hasCheckedEligibility}
-        />
-      )}
+      {/* Persona Selector - Always visible for navigation */}
+      <MinimalPersonaSelector
+        onSelectIntent={setUserIntent}
+        currentIntent={userIntent}
+      />
 
-      {/* Simplified Claim Flow */}
+      {/* Claim Flow */}
       {userIntent === 'claim' && (
-        <SimplifiedClaimPanel
+        <MinimalClaimPanel
           account={account}
           isEligible={airdrop.proof !== null}
           hasChecked={airdrop.hasCheckedEligibility}
@@ -588,48 +575,38 @@ export default function HomePage() {
           invitedBy={airdrop.invitedBy}
           invitesRequired={invitesRequired}
           poolFunded={poolFunded}
-          isFetchingState={false}
           onCheckEligibility={() => airdrop.refreshProof()}
           onClaim={claim}
           onRetryClaim={() => {
             setClaimError(null);
             claim();
           }}
-          onSwitchToInvite={() => setUserIntent('invite')}
-          onSwitchToTrade={() => setUserIntent('trade')}
           setShowProviderModal={setShowProviderModal}
         />
       )}
 
       {/* Invite Friends */}
       {userIntent === 'invite' && (
-        <InvitesPanel
+        <MinimalInvitesPanel
           account={account}
           hasClaimed={airdrop.hasClaimed}
           invitesOpen={invitesOpen}
-          invitedBy={airdrop.invitedBy}
           maxInvites={airdrop.maxInvites}
           invitesCreated={airdrop.invitesCreated}
           normalizedSlots={normalizedSlots}
           invitee={invitee}
           setInvitee={setInvitee}
           createInvite={createInvite}
-          refreshOnChain={airdrop.refreshOnChain}
-          setShowProviderModal={setShowProviderModal}
-          copyToClipboard={copyToClipboard}
-          copiedKey={copiedKey}
-          revokingSlot={revokingSlot}
-          revokeInvite={revokeInvite}
           inviting={inviting}
           hasEmptySlot={hasEmptySlot}
+          setShowProviderModal={setShowProviderModal}
         />
       )}
 
       {/* Trade Tokens */}
       {userIntent === 'trade' && (
-        <SimplifiedMarketPanel
+        <MinimalMarketPanel
           account={account}
-          contractAddress={CONTRACT_ADDRESS}
           reserveEth={market.reserveEth}
           reserveDemo={market.reserveDemo}
           priceEthPerDemo={priceEthPerDemo}
@@ -647,6 +624,27 @@ export default function HomePage() {
         />
       )}
 
+      {/* Wallet Info */}
+      {userIntent === 'wallet' && (
+        <MinimalWalletPanel
+          account={account}
+          ethBalance={market.ethBalance}
+          demoBalance={market.demoBalance}
+          chainName={CHAIN_NAME}
+          onDisconnect={disconnectWallet}
+          onSwitchWallet={() => setShowProviderModal(true)}
+          setShowProviderModal={setShowProviderModal}
+        />
+      )}
+
+      {/* Project Info */}
+      {userIntent === 'info' && (
+        <MinimalInfoPanel
+          totalClaims={airdrop.claimCount}
+          freeClaims={airdrop.freeClaims}
+          maxInvites={airdrop.maxInvites}
+        />
+      )}
 
       <ProviderModal
         open={showProviderModal}

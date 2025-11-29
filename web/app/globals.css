@@ -6,33 +6,10 @@
   :root {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
+    --border: 217.2 32.6% 17.5%;
     --primary: 142.1 76.2% 36.3%;
     --primary-foreground: 355.7 100% 97.3%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142.4 71.8% 29.2%;
-
-    --radius: 0.75rem;
   }
 }
 
@@ -41,47 +18,14 @@
     border-color: hsl(var(--border));
   }
   body {
-    @apply bg-background text-foreground;
-    background: radial-gradient(120% 120% at 20% 20%, #162033, #0c1220 55%, #060910 100%);
+    @apply bg-slate-950 text-slate-100;
     min-height: 100vh;
   }
 }
 
-.glass {
-  @apply bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl;
-}
-
+/* Minimal utility classes */
 @layer utilities {
-  .glass-card {
-    @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl;
-  }
-
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400;
-  }
-  
-  /* Improve color contrast for accessibility */
-  .text-slate-400 {
-    @apply text-slate-300;
-  }
-  
-  .animate-shimmer {
-    animation: shimmer 2s linear infinite;
-    background: linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.05) 0%,
-      rgba(255, 255, 255, 0.1) 50%,
-      rgba(255, 255, 255, 0.05) 100%
-    );
-    background-size: 1000px 100%;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
+  .minimal-card {
+    @apply border border-slate-800 bg-slate-900 rounded;
   }
 }
