@@ -4,7 +4,7 @@ import { logger } from "./logger";
 // Default values - used in development and as fallbacks
 const DEFAULTS = {
     NEXT_PUBLIC_API_BASE: "http://18.143.177.167:3000",
-    NEXT_PUBLIC_CONTRACT_ADDRESS: "0x20E6EaD47195aBE822B6414F507df0EA1876EA34",
+    NEXT_PUBLIC_CONTRACT_ADDRESS: "0x79A01fbb895fd9d821BC1123339f8887B07D9458",
     NEXT_PUBLIC_CHAIN_ID: "11155111",
     NEXT_PUBLIC_CHAIN_NAME: "Sepolia",
     NEXT_PUBLIC_RPC_URL: "https://1rpc.io/sepolia",

@@ -162,4 +162,4 @@ npm run test:ui              # Interactive test UI
 - **Sepolia testnet**: Default deployment target (chain ID 11155111)
 - **MetaMask**: Primary wallet connector
 - **Proof API**: Runs on `http://18.143.177.167:3000` (production) or `localhost:3000` (dev)
-- **Contract**: `0x20E6EaD47195aBE822B6414F507df0EA1876EA34` (Sepolia)
+- **Contract**: `0x79A01fbb895fd9d821BC1123339f8887B07D9458` (Sepolia)

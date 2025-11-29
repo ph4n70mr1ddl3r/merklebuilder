@@ -9,7 +9,7 @@ import {
 describe('validators', () => {
     describe('addressSchema', () => {
         it('should validate correct Ethereum address', () => {
-            const result = addressSchema.safeParse('0x20E6EaD47195aBE822B6414F507df0EA1876EA34');
+            const result = addressSchema.safeParse('0x79A01fbb895fd9d821BC1123339f8887B07D9458');
             expect(result.success).toBe(true);
         });
 
@@ -82,7 +82,7 @@ describe('validators', () => {
         it('should validate correct environment variables', () => {
             const result = envSchema.safeParse({
                 NEXT_PUBLIC_API_BASE: 'http://localhost:3000',
-                NEXT_PUBLIC_CONTRACT_ADDRESS: '0x20E6EaD47195aBE822B6414F507df0EA1876EA34',
+                NEXT_PUBLIC_CONTRACT_ADDRESS: '0x79A01fbb895fd9d821BC1123339f8887B07D9458',
                 NEXT_PUBLIC_CHAIN_ID: '11155111',
                 NEXT_PUBLIC_CHAIN_NAME: 'Sepolia',
                 NEXT_PUBLIC_RPC_URL: 'https://1rpc.io/sepolia',
@@ -93,7 +93,7 @@ describe('validators', () => {
         it('should reject invalid API URL', () => {
             const result = envSchema.safeParse({
                 NEXT_PUBLIC_API_BASE: 'not-a-url',
-                NEXT_PUBLIC_CONTRACT_ADDRESS: '0x20E6EaD47195aBE822B6414F507df0EA1876EA34',
+                NEXT_PUBLIC_CONTRACT_ADDRESS: '0x79A01fbb895fd9d821BC1123339f8887B07D9458',
                 NEXT_PUBLIC_CHAIN_ID: '11155111',
                 NEXT_PUBLIC_CHAIN_NAME: 'Sepolia',
                 NEXT_PUBLIC_RPC_URL: 'https://1rpc.io/sepolia',
