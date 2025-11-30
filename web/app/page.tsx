@@ -599,6 +599,8 @@ export default function HomePage() {
           inviting={inviting}
           hasEmptySlot={hasEmptySlot}
           setShowProviderModal={setShowProviderModal}
+          revokeInvite={revokeInvite}
+          revokingSlot={revokingSlot}
         />
       )}
 

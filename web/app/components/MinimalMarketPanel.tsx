@@ -178,8 +178,8 @@ export function MinimalMarketPanel({
 
   if (!poolFunded) {
     return (
-      <section className="mx-auto max-w-2xl px-4 py-12">
-        <div className="minimal-card p-8 text-center">
+      <section className="mx-auto max-w-2xl px-4 py-8">
+        <div className="minimal-card p-6 text-center">
           <h2 className="text-xl font-semibold mb-4">Pool Not Ready</h2>
           <p className="text-slate-400">The AMM needs ETH liquidity before trading can begin</p>
         </div>
@@ -188,9 +188,9 @@ export function MinimalMarketPanel({
   }
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-12">
-      <div className="minimal-card p-8">
-        <h2 className="text-xl font-semibold mb-6">Trade DEMO</h2>
+    <section className="mx-auto max-w-2xl px-4 py-8">
+      <div className="minimal-card p-6">
+        <h2 className="text-xl font-semibold mb-4">Trade DEMO</h2>
 
         <div className="space-y-4">
           {/* Input */}
@@ -301,7 +301,7 @@ export function MinimalMarketPanel({
         </div>
 
         {/* Pool Stats */}
-        <div className="mt-8 pt-6 border-t border-slate-800">
+        <div className="mt-6 pt-6 border-t border-slate-800">
           <div className="grid grid-cols-1 xs:grid-cols-3 gap-4 text-sm text-center xs:text-left">
             <div className="bg-slate-900/50 p-3 rounded xs:bg-transparent xs:p-0">
               <div className="text-slate-500 mb-1">ETH</div>

@@ -81,39 +81,6 @@ export function MinimalInfoPanel({ totalClaims, freeClaims, maxInvites }: Minima
           </div>
         </div>
 
-        {/* Technical Details */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <h3 className="text-lg font-semibold text-slate-100 mb-4">Technical Details</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">Network</span>
-              <span className="text-sm font-medium text-slate-200">{CHAIN_NAME}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">Contract</span>
-              <code className="text-xs font-mono text-slate-200 bg-slate-800 px-2 py-1 rounded">
-                {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}
-              </code>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">Token Standard</span>
-              <span className="text-sm font-medium text-slate-200">ERC20</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">Claim Amount</span>
-              <span className="text-sm font-medium text-emerald-400">100 DEMO</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">AMM Type</span>
-              <span className="text-sm font-medium text-slate-200">Constant Product (x·y=k)</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-slate-400">Proof System</span>
-              <span className="text-sm font-medium text-slate-200">Merkle Tree</span>
-            </div>
-          </div>
-        </div>
-
         {/* Links */}
         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
           <h3 className="text-lg font-semibold text-slate-100 mb-4">Resources</h3>

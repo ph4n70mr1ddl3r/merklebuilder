@@ -40,10 +40,7 @@ export function MinimalWalletPanel({
   if (!account) {
     return (
       <section className="mx-auto max-w-2xl px-4 py-8">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center">
-          <div className="mb-4">
-            <span className="text-4xl">👛</span>
-          </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
           <h2 className="text-xl font-semibold text-slate-100 mb-2">No Wallet Connected</h2>
           <p className="text-slate-400 mb-6">
             Connect your wallet to view your balances and account information.
