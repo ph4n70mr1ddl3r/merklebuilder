@@ -223,23 +223,23 @@ export function SimplifiedMarketPanel({
   const isButtonDisabled = trading || !poolFunded || !!calculationError || !inputAmount || inputAmount === '0' || !outputAmount || outputAmount === '0';
 
   return (
-    <section className="mx-auto max-w-4xl px-3 pt-6 pb-14 md:px-4">
-      <div className="glass-card w-full space-y-6 p-5 md:p-6">
+    <section className="mx-auto max-w-4xl px-3 sm:px-4 pt-4 sm:pt-6 pb-10 sm:pb-14">
+      <div className="glass-card w-full space-y-4 sm:space-y-6 p-4 sm:p-5 md:p-6">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3">
           <div>
-            <p className="text-sm uppercase tracking-wide text-slate-400">Trade DEMO</p>
-            <h3 className="text-xl font-semibold text-slate-50">Constant-Product AMM</h3>
-            <p className="text-sm text-slate-300">
+            <p className="text-xs sm:text-sm uppercase tracking-wide text-slate-400">Trade DEMO</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-slate-50">Constant-Product AMM</h3>
+            <p className="text-xs sm:text-sm text-slate-300">
               Enter amount, we&apos;ll calculate the output
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs text-slate-300">
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-              Your DEMO: {formatToken(demoBalance)}
+          <div className="flex flex-wrap gap-2 text-xs text-slate-300 w-full sm:w-auto">
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 sm:px-3 py-1">
+              DEMO: {formatToken(demoBalance)}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-              Price: {priceEthPerDemo} ETH/DEMO
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 sm:px-3 py-1">
+              {priceEthPerDemo} ETH/DEMO
             </span>
           </div>
         </div>
@@ -260,23 +260,24 @@ export function SimplifiedMarketPanel({
         )}
 
         {/* Trading Interface */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
           {/* Main Trade Form */}
-          <div className="lg:col-span-2 rounded-xl border border-white/10 bg-slate-900/70 p-5">
+          <div className="lg:col-span-2 rounded-xl border border-white/10 bg-slate-900/70 p-4 sm:p-5">
             <div className="space-y-4">
               {/* Input */}
               <div>
-                <label htmlFor="trade-input" className="block text-sm font-semibold text-slate-200 mb-2">
+                <label htmlFor="trade-input" className="block text-xs sm:text-sm font-semibold text-slate-200 mb-2">
                   You pay
                 </label>
                 <div className="relative">
                   <input
                     id="trade-input"
                     type="text"
+                    inputMode="decimal"
                     value={inputAmount}
                     onChange={(e) => handleInputChange(e.target.value)}
                     placeholder="0.0"
-                    className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 pr-32 text-lg text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 sm:px-4 py-3 pr-24 sm:pr-32 text-base sm:text-lg text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     aria-label="Trade amount input"
                   />
                   {!isBuying && demoBalance > 0n && (
@@ -317,17 +318,18 @@ export function SimplifiedMarketPanel({
 
               {/* Output Display - Now Editable */}
               <div>
-                <label htmlFor="trade-output" className="block text-sm font-semibold text-slate-200 mb-2">
+                <label htmlFor="trade-output" className="block text-xs sm:text-sm font-semibold text-slate-200 mb-2">
                   You receive
                 </label>
                 <div className="relative">
                   <input
                     id="trade-output"
                     type="text"
+                    inputMode="decimal"
                     value={outputAmount}
                     onChange={(e) => handleOutputChange(e.target.value)}
                     placeholder="0.0"
-                    className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-3 pr-20 text-lg text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 sm:px-4 py-3 pr-16 sm:pr-20 text-base sm:text-lg text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     aria-label="Trade amount output"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-white/10 px-2 py-1 text-xs font-semibold text-slate-300">
@@ -375,17 +377,17 @@ export function SimplifiedMarketPanel({
 
               {/* Slippage */}
               <div>
-                <label htmlFor="slippage" className="block text-sm font-semibold text-slate-200 mb-2">
+                <label htmlFor="slippage" className="block text-xs sm:text-sm font-semibold text-slate-200 mb-2">
                   <Tooltip content="Maximum acceptable price change between submission and execution. Higher slippage = more likely to execute, but potentially worse price.">
-                    <span className="border-b border-dotted border-slate-400">Slippage Tolerance</span>
+                    <span className="border-b border-dotted border-slate-400">Slippage</span>
                   </Tooltip> (%)
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {['0.5', '1.0', '2.0'].map((preset) => (
                     <button
                       key={preset}
                       onClick={() => setSlippage(preset)}
-                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition min-h-[40px] ${
                         slippage === preset
                           ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/50'
                           : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
@@ -397,10 +399,11 @@ export function SimplifiedMarketPanel({
                   <input
                     id="slippage"
                     type="text"
+                    inputMode="decimal"
                     value={slippage}
                     onChange={(e) => setSlippage(e.target.value)}
                     placeholder="1.0"
-                    className="flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                    className="flex-1 min-w-[60px] rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -409,10 +412,10 @@ export function SimplifiedMarketPanel({
               <button
                 onClick={handleTrade}
                 disabled={isButtonDisabled}
-                className={`w-full rounded-lg px-6 py-4 text-base font-bold shadow-lg transition-all ${
+                className={`w-full rounded-lg px-5 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-bold shadow-lg transition-all min-h-[48px] ${
                   isButtonDisabled
                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-emerald-950 shadow-emerald-500/30 hover:-translate-y-0.5'
+                    : 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-emerald-950 shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0'
                 }`}
               >
                 {getButtonText()}

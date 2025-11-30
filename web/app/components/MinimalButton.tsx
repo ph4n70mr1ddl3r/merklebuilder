@@ -15,7 +15,7 @@ export function MinimalButton({
   type = 'button',
   className = '',
 }: MinimalButtonProps) {
-  const baseStyles = 'px-4 py-2 text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'px-4 py-3 text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target';
   
   const variantStyles = {
     primary: 'bg-emerald-500 text-white hover:bg-emerald-600 disabled:hover:bg-emerald-500',

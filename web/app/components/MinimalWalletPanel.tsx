@@ -77,12 +77,12 @@ export function MinimalWalletPanel({
         <div>
           <label className="block text-sm text-slate-400 mb-2">Address</label>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-lg bg-slate-800/50 px-4 py-3 font-mono text-sm text-slate-200 border border-slate-700">
+            <code className="flex-1 rounded-lg bg-slate-800/50 px-4 py-3 font-mono text-sm text-slate-200 border border-slate-700 truncate">
               {account}
             </code>
             <button
               onClick={copyAddress}
-              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-sm text-slate-300 transition hover:bg-slate-700 hover:text-slate-100"
+              className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-sm text-slate-300 transition hover:bg-slate-700 hover:text-slate-100 shrink-0 touch-target"
               title="Copy address"
             >
               {copied ? '✓' : '📋'}
@@ -91,14 +91,14 @@ export function MinimalWalletPanel({
         </div>
 
         {/* Balances */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
           <div className="rounded-lg border border-purple-400/30 bg-purple-400/10 p-4">
             <div className="text-xs text-purple-400 mb-1">ETH Balance</div>
-            <div className="text-2xl font-semibold text-purple-300">{formatToken(ethBalance)}</div>
+            <div className="text-2xl font-semibold text-purple-300 truncate" title={formatToken(ethBalance)}>{formatToken(ethBalance)}</div>
           </div>
           <div className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 p-4">
             <div className="text-xs text-emerald-400 mb-1">DEMO Balance</div>
-            <div className="text-2xl font-semibold text-emerald-300">{formatToken(demoBalance)}</div>
+            <div className="text-2xl font-semibold text-emerald-300 truncate" title={formatToken(demoBalance)}>{formatToken(demoBalance)}</div>
           </div>
         </div>
 

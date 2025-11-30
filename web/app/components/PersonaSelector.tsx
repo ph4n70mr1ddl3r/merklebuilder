@@ -20,22 +20,22 @@ export function PersonaSelector({
   hasChecked,
 }: PersonaSelectorProps) {
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-8">
+    <div className="mx-auto max-w-4xl px-3 sm:px-4 pt-6 sm:pt-8">
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         {/* Claim Free Tokens */}
         <button
           onClick={() => onSelectIntent('claim')}
           disabled={hasClaimed && hasChecked}
-          className={`glass-card relative group p-6 text-left transition-all duration-300 ${
+          className={`glass-card relative group p-4 sm:p-6 text-left transition-all duration-300 min-h-[120px] sm:min-h-[auto] ${
             currentIntent === 'claim'
               ? 'border-emerald-400 bg-emerald-400/10 shadow-[0_0_30px_rgba(52,211,153,0.2)]'
               : 'hover:border-emerald-400/50 hover:bg-white/10'
-          } ${hasClaimed && hasChecked ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-2'}`}
+          } ${hasClaimed && hasChecked ? 'opacity-50 cursor-not-allowed' : 'sm:hover:-translate-y-2'}`}
         >
           <div className="flex items-start justify-between mb-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-400/20 group-hover:scale-110 transition-transform">
-              <span className="text-2xl">🎁</span>
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-emerald-400/20 group-hover:scale-110 transition-transform">
+              <span className="text-xl sm:text-2xl">🎁</span>
             </div>
             {hasClaimed && hasChecked && (
               <span className="rounded-full bg-emerald-400/20 px-2 py-1 text-xs text-emerald-300">✓ Claimed</span>
@@ -54,15 +54,15 @@ export function PersonaSelector({
         <button
           onClick={() => onSelectIntent('invite')}
           disabled={!hasClaimed}
-          className={`glass-card relative group p-6 text-left transition-all duration-300 ${
+          className={`glass-card relative group p-4 sm:p-6 text-left transition-all duration-300 min-h-[120px] sm:min-h-[auto] ${
             currentIntent === 'invite'
               ? 'border-cyan-400 bg-cyan-400/10 shadow-[0_0_30px_rgba(34,211,238,0.2)]'
               : 'hover:border-cyan-400/50 hover:bg-white/10'
-          } ${!hasClaimed ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-2'}`}
+          } ${!hasClaimed ? 'opacity-50 cursor-not-allowed' : 'sm:hover:-translate-y-2'}`}
         >
           <div className="flex items-start justify-between mb-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-400/20 group-hover:scale-110 transition-transform">
-              <span className="text-2xl">👥</span>
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-cyan-400/20 group-hover:scale-110 transition-transform">
+              <span className="text-xl sm:text-2xl">👥</span>
             </div>
             {!hasClaimed && (
               <span className="rounded-full bg-slate-400/20 px-2 py-1 text-xs text-slate-400">Claim first</span>
@@ -77,15 +77,15 @@ export function PersonaSelector({
         {/* Trade Tokens */}
         <button
           onClick={() => onSelectIntent('trade')}
-          className={`glass-card relative group p-6 text-left transition-all duration-300 ${
+          className={`glass-card relative group p-4 sm:p-6 text-left transition-all duration-300 min-h-[120px] sm:min-h-[auto] ${
             currentIntent === 'trade'
               ? 'border-purple-400 bg-purple-400/10 shadow-[0_0_30px_rgba(192,132,252,0.2)]'
               : 'hover:border-purple-400/50 hover:bg-white/10'
-          } hover:-translate-y-2`}
+          } sm:hover:-translate-y-2`}
         >
           <div className="flex items-start justify-between mb-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-400/20 group-hover:scale-110 transition-transform">
-              <span className="text-2xl">💱</span>
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-purple-400/20 group-hover:scale-110 transition-transform">
+              <span className="text-xl sm:text-2xl">💱</span>
             </div>
           </div>
           <h3 className="text-lg font-bold text-slate-50 mb-2 group-hover:text-purple-400 transition-colors">Trade</h3>

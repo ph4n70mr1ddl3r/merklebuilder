@@ -13,14 +13,14 @@ export function MinimalInfoPanel({ totalClaims, freeClaims, maxInvites }: Minima
     <section className="mx-auto max-w-3xl px-4 py-8">
       <div className="space-y-6">
         {/* Overview */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:p-6">
           <h2 className="text-xl font-semibold text-slate-100 mb-4">About DEMO Airdrop</h2>
           <p className="text-slate-300 leading-relaxed mb-4">
             DEMO is a real Ethereum mainnet airdrop for 64M+ users who paid ≥0.004 ETH in gas fees 
             from blocks 0-23M. The project combines a Merkle-gated token claim with an invite system 
             and integrated constant-product AMM.
           </p>
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-4 mt-6">
             <div className="rounded-lg bg-slate-800/50 p-4 border border-slate-700">
               <div className="text-xs text-slate-400 mb-1">Total Eligible</div>
               <div className="text-2xl font-semibold text-emerald-400">64M+</div>
@@ -35,7 +35,7 @@ export function MinimalInfoPanel({ totalClaims, freeClaims, maxInvites }: Minima
         </div>
 
         {/* How It Works */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-slate-100 mb-4">How It Works</h3>
           <div className="space-y-4">
             <div className="flex gap-3">

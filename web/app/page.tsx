@@ -552,7 +552,6 @@ export default function HomePage() {
   return (
     <div className="relative min-h-screen overflow-hidden font-sans">
       <MinimalHero
-        stats={heroStats}
       />
 
       {/* Persona Selector - Always visible for navigation */}

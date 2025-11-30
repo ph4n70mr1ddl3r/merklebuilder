@@ -83,15 +83,18 @@ export function MinimalInvitesPanel({
             
             return (
               <div key={idx} className="flex items-center justify-between p-3 border border-slate-800 rounded text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-slate-500 w-12">#{idx + 1}</span>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <span className="text-slate-500 w-12 shrink-0">#{idx + 1}</span>
                   {slot.invitee ? (
-                    <span className="font-mono text-slate-300">{slot.invitee.slice(0, 10)}...{slot.invitee.slice(-8)}</span>
+                    <>
+                      <span className="font-mono text-slate-300 hidden sm:inline">{slot.invitee.slice(0, 10)}...{slot.invitee.slice(-8)}</span>
+                      <span className="font-mono text-slate-300 sm:hidden">{slot.invitee.slice(0, 6)}...{slot.invitee.slice(-4)}</span>
+                    </>
                   ) : (
                     <span className="text-slate-600">Empty</span>
                   )}
                 </div>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 shrink-0 ml-2">
                   {isUsed ? 'Claimed' : isPending ? 'Pending' : 'Open'}
                 </span>
               </div>

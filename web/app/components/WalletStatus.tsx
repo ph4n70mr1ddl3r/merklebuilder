@@ -36,7 +36,7 @@ export function WalletStatus({
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed top-2 sm:top-4 right-2 sm:right-4 z-50 max-w-[calc(100vw-1rem)]">
       {/* Desktop View */}
       <div className="hidden md:block rounded-xl border border-white/10 bg-slate-900/95 backdrop-blur-sm shadow-xl p-3">
         <div className="flex items-center gap-3">
@@ -100,7 +100,7 @@ export function WalletStatus({
         {!expanded && (
           <button
             onClick={() => setExpanded(true)}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/95 backdrop-blur-sm shadow-xl px-3 py-2 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/95 backdrop-blur-sm shadow-xl px-3 py-2 min-h-[44px] focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900 active:bg-slate-800"
             aria-label="Expand wallet status"
             aria-expanded="false"
           >
@@ -112,7 +112,7 @@ export function WalletStatus({
 
         {/* Expanded: Full details */}
         {expanded && (
-          <div className="rounded-xl border border-white/10 bg-slate-900/95 backdrop-blur-sm shadow-xl p-4 min-w-[200px]">
+          <div className="rounded-xl border border-white/10 bg-slate-900/95 backdrop-blur-sm shadow-xl p-4 min-w-[220px] max-w-[280px]">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
@@ -120,7 +120,7 @@ export function WalletStatus({
               </div>
               <button
                 onClick={() => setExpanded(false)}
-                className="text-slate-400 hover:text-slate-200 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900 rounded p-1"
+                className="text-slate-400 hover:text-slate-200 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900 rounded p-2 min-h-[40px] min-w-[40px] flex items-center justify-center active:bg-white/10"
                 aria-label="Collapse wallet status"
                 aria-expanded="true"
               >
@@ -158,14 +158,14 @@ export function WalletStatus({
             <div className="flex gap-2">
               <button
                 onClick={onSwitchWallet}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/10 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900 min-h-[44px] active:bg-white/15"
                 aria-label="Switch to a different wallet"
               >
-                Switch Wallet
+                Switch
               </button>
               <button
                 onClick={onDisconnect}
-                className="flex-1 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-400/20 focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="flex-1 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2.5 text-xs font-medium text-red-300 transition hover:bg-red-400/20 focus:ring-2 focus:ring-red-400 focus:ring-offset-2 focus:ring-offset-slate-900 min-h-[44px] active:bg-red-400/25"
                 aria-label="Disconnect wallet"
               >
                 Disconnect

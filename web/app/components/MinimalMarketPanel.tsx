@@ -224,16 +224,20 @@ export function MinimalMarketPanel({
           </div>
 
           {/* Swap Direction */}
-          <div className="flex justify-center">
+          <div className="flex justify-center -my-3 relative z-10">
             <button
               onClick={() => {
                 setDirection(isBuying ? 'demo-to-eth' : 'eth-to-demo');
                 setInputAmount('');
                 setOutputAmount('');
               }}
-              className="text-slate-400 hover:text-slate-200 text-xl"
+              className="bg-slate-900 border border-slate-800 p-2 rounded-full text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors shadow-lg touch-target"
+              aria-label="Switch direction"
             >
-              ↕
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 15l5 5 5-5"/>
+                <path d="M7 9l5-5 5 5"/>
+              </svg>
             </button>
           </div>
 
@@ -298,16 +302,16 @@ export function MinimalMarketPanel({
 
         {/* Pool Stats */}
         <div className="mt-8 pt-6 border-t border-slate-800">
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div>
+          <div className="grid grid-cols-1 xs:grid-cols-3 gap-4 text-sm text-center xs:text-left">
+            <div className="bg-slate-900/50 p-3 rounded xs:bg-transparent xs:p-0">
               <div className="text-slate-500 mb-1">ETH</div>
               <div className="text-slate-300">{formatToken(reserveEth)}</div>
             </div>
-            <div>
+            <div className="bg-slate-900/50 p-3 rounded xs:bg-transparent xs:p-0">
               <div className="text-slate-500 mb-1">DEMO</div>
               <div className="text-slate-300">{formatToken(reserveDemo)}</div>
             </div>
-            <div>
+            <div className="bg-slate-900/50 p-3 rounded xs:bg-transparent xs:p-0">
               <div className="text-slate-500 mb-1">Price</div>
               <div className="text-emerald-400">{priceEthPerDemo}</div>
             </div>

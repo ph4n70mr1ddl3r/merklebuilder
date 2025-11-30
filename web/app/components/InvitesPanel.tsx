@@ -66,7 +66,7 @@ export function InvitesPanel({
       id="invites"
       role="tabpanel"
       aria-labelledby="tab-invites"
-      className="mx-auto max-w-4xl px-3 pt-6 pb-14 md:px-4"
+      className="mx-auto max-w-4xl px-3 sm:px-4 pt-4 sm:pt-6 pb-10 sm:pb-14"
       tabIndex={0}
     >
       
@@ -85,8 +85,8 @@ export function InvitesPanel({
           <div className="space-y-4">
 
             {/* Invitation Slots */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-200">Invitation slots</p>
                   <p className="text-xs text-slate-400">
@@ -95,13 +95,13 @@ export function InvitesPanel({
                 </div>
                 <button
                   onClick={() => refreshOnChain(account)}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 hover:-translate-y-0.5"
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 hover:-translate-y-0.5 min-h-[40px] w-full sm:w-auto"
                 >
                   Refresh slots
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 <InfoRow label="Invites created" value={`${invitesCreated} / ${maxInvites}`} />
                 <InfoRow
                   label="Available slots"
@@ -109,13 +109,13 @@ export function InvitesPanel({
                 />
               </div>
 
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2">
                 {normalizedSlots.map((slot, idx) => {
                   const isPending = slot.invitee && !slot.used;
                   const isUsed = slot.invitee && slot.used;
                   return (
                     <div key={`slot-${idx}`} className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-3 text-sm">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
                         <div className="flex flex-col">
                           <p className="text-xs uppercase tracking-wide text-slate-500">Slot {idx + 1}</p>
                           <p className="font-semibold text-slate-100">{isUsed ? "Claimed by" : isPending ? "Reserved for" : "Unused"}</p>
@@ -179,7 +179,7 @@ export function InvitesPanel({
                 <button
                   onClick={createInvite}
                   disabled={!account || !hasClaimed || inviting || !hasEmptySlot || !invitesOpen}
-                  className="w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
+                  className="w-full rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 disabled:opacity-50 min-h-[44px]"
                 >
                   {inviting ? "Creating…" : "Create invite"}
                 </button>

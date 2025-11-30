@@ -12,6 +12,14 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      // Custom breakpoints for mobile-first design
+      screens: {
+        'xs': '475px', // Extra small devices
+        'sm': '640px',
+        'md': '768px',
+        'lg': '1024px',
+        'xl': '1280px',
+      },
       // Simplified spacing
       borderRadius: {
         'DEFAULT': '0.5rem', // Single border radius

@@ -60,12 +60,12 @@ export function SimplifiedClaimPanel({
   const canClaim = account && isEligible && !hasClaimed && poolFunded && (!invitesRequired || invitedBy);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-6">
-      <div className="glass-card p-6 md:p-8">
+    <div className="mx-auto max-w-3xl px-3 sm:px-4 pt-4 sm:pt-6">
+      <div className="glass-card p-4 sm:p-6 md:p-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-slate-50 mb-3">Claim Your Free DEMO Tokens</h2>
-          <p className="text-slate-300">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-2 sm:mb-3">Claim Your Free DEMO Tokens</h2>
+          <p className="text-sm sm:text-base text-slate-300">
             If you paid ≥0.004 ETH in gas fees on Ethereum mainnet (blocks 0-23M), you qualify for 100 DEMO tokens
           </p>
           {isFetchingState && (
@@ -77,7 +77,7 @@ export function SimplifiedClaimPanel({
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex items-center justify-between mb-4">
             {[
               { num: 1, label: 'Connect' },
@@ -89,7 +89,7 @@ export function SimplifiedClaimPanel({
                 <div className="flex flex-col items-center flex-1">
                   <div
                     className={clsx(
-                      'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-all',
+                      'flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-xs sm:text-sm font-semibold transition-all',
                       currentStep >= step.num
                         ? 'bg-emerald-400 text-emerald-950 shadow-lg shadow-emerald-500/30'
                         : 'bg-slate-800 text-slate-400 border border-white/10'
@@ -97,12 +97,12 @@ export function SimplifiedClaimPanel({
                   >
                     {currentStep > step.num ? '✓' : step.num}
                   </div>
-                  <span className="mt-2 text-xs text-slate-400">{step.label}</span>
+                  <span className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-slate-400 hidden xs:block">{step.label}</span>
                 </div>
                 {idx < 3 && (
                   <div
                     className={clsx(
-                      'h-0.5 flex-1 transition-all -mt-6',
+                      'h-0.5 flex-1 transition-all -mt-4 sm:-mt-6',
                       currentStep > step.num ? 'bg-emerald-400' : 'bg-slate-700'
                     )}
                   />
@@ -114,19 +114,19 @@ export function SimplifiedClaimPanel({
 
         {/* Step 1: Connect Wallet */}
         {!account && (
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/5 p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-400/20">
-                <span className="text-2xl">👛</span>
+          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/5 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-emerald-400/20">
+                <span className="text-xl sm:text-2xl">👛</span>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-50 mb-2">Step 1: Connect Your Wallet</h3>
-                <p className="text-sm text-slate-300 mb-4">
+              <div className="flex-1 w-full">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-50 mb-2">Step 1: Connect Your Wallet</h3>
+                <p className="text-xs sm:text-sm text-slate-300 mb-3 sm:mb-4">
                   Connect the wallet you used on Ethereum mainnet to check your eligibility
                 </p>
                 <button
                   onClick={() => setShowProviderModal(true)}
-                  className="rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-6 py-3 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                  className="w-full sm:w-auto rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 px-5 sm:px-6 py-3 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-900 min-h-[44px]"
                   aria-label="Connect wallet to check eligibility"
                 >
                   Connect Wallet
@@ -138,39 +138,41 @@ export function SimplifiedClaimPanel({
 
         {/* Step 2: Check Eligibility */}
         {account && !hasChecked && (
-          <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/5 p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-400/20">
-                <span className="text-2xl">🔍</span>
+          <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/5 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-cyan-400/20">
+                <span className="text-xl sm:text-2xl">🔍</span>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-50 mb-2">Step 2: Check Your Eligibility</h3>
-                <p className="text-sm text-slate-300 mb-2">
-                  Connected: <span className="font-mono text-emerald-400">{shorten(account)}</span>
+              <div className="flex-1 w-full">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-50 mb-2">Step 2: Check Your Eligibility</h3>
+                <p className="text-xs sm:text-sm text-slate-300 mb-2">
+                  Connected: <span className="font-mono text-emerald-400 break-all">{shorten(account)}</span>
                 </p>
-                <p className="text-sm text-slate-300 mb-4">
+                <p className="text-xs sm:text-sm text-slate-300 mb-3 sm:mb-4">
                   We&apos;ll verify if this address paid ≥0.004 ETH in gas fees from blocks 0 to 23M
                 </p>
-                <button
-                  onClick={onCheckEligibility}
-                  disabled={!canCheckEligibility || checking}
-                  className="rounded-lg bg-gradient-to-r from-cyan-400 to-cyan-500 px-6 py-3 font-semibold text-cyan-950 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5 disabled:opacity-50"
-                >
-                  {checking ? (
-                    <span className="flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-950 border-t-transparent" />
-                      Checking eligibility...
-                    </span>
-                  ) : (
-                    'Check Eligibility'
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowProviderModal(true)}
-                  className="ml-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5"
-                >
-                  Switch Wallet
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  <button
+                    onClick={onCheckEligibility}
+                    disabled={!canCheckEligibility || checking}
+                    className="flex-1 sm:flex-none rounded-lg bg-gradient-to-r from-cyan-400 to-cyan-500 px-5 sm:px-6 py-3 font-semibold text-cyan-950 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5 disabled:opacity-50 min-h-[44px]"
+                  >
+                    {checking ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-950 border-t-transparent" />
+                        <span className="text-sm">Checking...</span>
+                      </span>
+                    ) : (
+                      'Check Eligibility'
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowProviderModal(true)}
+                    className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 min-h-[44px]"
+                  >
+                    Switch Wallet
+                  </button>
+                </div>
               </div>
             </div>
           </div>
