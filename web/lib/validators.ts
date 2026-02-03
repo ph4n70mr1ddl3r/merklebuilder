@@ -41,17 +41,17 @@ export const slippageSchema = z
     }, "Slippage must be between 0 and 100");
 
 export const ProofResponseSchema = z.object({
-    address: z.string(),
-    index: z.number(),
-    total: z.number(),
-    leaf: z.string(),
-    root: z.string(),
+    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    index: z.number().int().nonnegative(),
+    total: z.number().int().positive(),
+    leaf: z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid leaf hash format"),
+    root: z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid root hash format"),
     proof: z.array(
         z.object({
-            hash: z.string(),
+            hash: z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid hash format"),
             side: z.enum(["left", "right"]).optional(),
-            level: z.number().optional(),
-            sibling_index: z.number().optional(),
+            level: z.number().int().nonnegative().optional(),
+            sibling_index: z.number().int().nonnegative().optional(),
         })
     ),
     proof_flags: z.array(z.boolean()),

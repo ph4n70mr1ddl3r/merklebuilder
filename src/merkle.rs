@@ -110,13 +110,17 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
 
         let is_left = path_index % 2 == 0;
         let sibling_idx = if is_left {
-            if path_index + 1 < node_count {
-                path_index + 1
+            if let Some(idx) = path_index.checked_add(1) {
+                if idx < node_count {
+                    idx
+                } else {
+                    path_index
+                }
             } else {
                 path_index
             }
         } else {
-            path_index - 1
+            path_index.saturating_sub(1)
         };
 
         let sibling_hash = read_node(&layer_path, sibling_idx)?;
@@ -150,6 +154,10 @@ pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], String> {
         return Err(format!(
             "Address must be {ADDRESS_HEX_LENGTH} hex characters after 0x"
         ));
+    }
+
+    if cleaned.contains('\0') {
+        return Err("Invalid address: contains null byte".to_string());
     }
 
     let mut buf = [0u8; ADDRESS_SIZE];
@@ -191,7 +199,8 @@ pub fn layer_node_count(path: &Path) -> Result<usize, String> {
 pub fn read_node(path: &Path, index: usize) -> Result<[u8; HASH_SIZE], String> {
     let mut file =
         File::open(path).map_err(|e| format!("Unable to open {}: {e}", path.display()))?;
-    file.seek(SeekFrom::Start((index as u64) * HASH_SIZE as u64))
+    let offset = (index as u64).saturating_mul(HASH_SIZE as u64);
+    file.seek(SeekFrom::Start(offset))
         .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
     let mut buf = [0u8; HASH_SIZE];
     file.read_exact(&mut buf)
@@ -278,7 +287,7 @@ pub fn ensure_db_present(db_dir: &Path) -> Result<(), String> {
 
 pub fn available_layers(db_dir: &Path) -> Vec<PathBuf> {
     let mut layers = Vec::new();
-    for idx in 0usize.. {
+    for idx in 0usize..=64 {
         let filename = format!("layer{:02}.bin", idx);
         let path = db_dir.join(filename);
         if path.exists() {

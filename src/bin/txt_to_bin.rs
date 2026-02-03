@@ -192,7 +192,7 @@ fn build_layers(
                 p.set_position(done as u64);
             }
         }
-        layers.push(next.clone());
+        layers.push(std::mem::take(&mut current));
         current = next;
     }
 

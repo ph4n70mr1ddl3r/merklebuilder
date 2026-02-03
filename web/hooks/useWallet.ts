@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { BrowserProvider, Eip1193Provider } from "ethers";
+import { CHAIN_ID } from "../lib/env";
 
 export type ProviderSource = "eip6963" | "injected";
 
@@ -17,9 +18,14 @@ type Eip6963ProviderDetail = {
     provider: Eip1193Provider;
 };
 
+interface EIP1193ProviderWithEvents extends Eip1193Provider {
+    on(event: string, handler: (...args: unknown[]) => void): void;
+    removeListener?(event: string, handler: (...args: unknown[]) => void): void;
+}
+
 declare global {
     interface Window {
-        ethereum?: any;
+        ethereum?: EIP1193ProviderWithEvents;
     }
 }
 
@@ -78,7 +84,7 @@ export function useWallet() {
         return () => {
             window.removeEventListener("eip6963:announceProvider", handler as EventListener);
         };
-    }, []);
+    }, [setWalletProviders, setSelectedProviderId]);
 
     const connect = useCallback(async (providerOption?: ProviderOption) => {
         const selected = providerOption?.provider ??
@@ -93,20 +99,25 @@ export function useWallet() {
         const address = await signer.getAddress();
         const network = await prov.getNetwork();
 
+        if (network.chainId !== BigInt(CHAIN_ID)) {
+            throw new Error(`Wrong network. Please switch to ${CHAIN_NAME} (Chain ID: ${CHAIN_ID})`);
+        }
+
         setProvider(prov);
         setAccount(address);
         setChainId(network.chainId);
 
         // Listen for changes
-        if ((selected as any).on) {
-            (selected as any).on("accountsChanged", (accounts: string[]) => {
+        const providerWithEvents = selected as EIP1193ProviderWithEvents;
+        if (providerWithEvents.on) {
+            providerWithEvents.on("accountsChanged", (accounts: string[]) => {
                 if (accounts.length === 0) {
                     disconnect();
                 } else {
                     setAccount(accounts[0]);
                 }
             });
-            (selected as any).on("chainChanged", () => {
+            providerWithEvents.on("chainChanged", () => {
                 window.location.reload();
             });
         }

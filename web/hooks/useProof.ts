@@ -52,15 +52,25 @@ export function useProof() {
                 }
             }
 
-            // Fetch from API
-            const res = await fetch(`${API_BASE}/proof/${normalizedAddress}`);
+            // Fetch from API with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(`Not in airdrop list (${text || res.status})`);
-            }
+            try {
+                const res = await fetch(`${API_BASE}/proof/${normalizedAddress}`, {
+                    signal: controller.signal,
+                });
 
-            const data = await res.json();
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`Not in airdrop list (${text || res.status})`);
+                }
+
+                const rawData = await res.text();
+                const data = JSON.parse(rawData);
+
+            const rawData = await res.text();
+            const data = JSON.parse(rawData);
 
             // Validate response structure
             const validatedData = ProofResponseSchema.parse(data);
@@ -79,17 +89,22 @@ export function useProof() {
 
             setIsValidated(true);
             setProof(validatedData);
-            
+
             // Cache the validated proof
             setCachedProof(normalizedAddress, validatedData);
-            
+
             return validatedData;
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Failed to fetch proof";
-            setError(errorMessage);
+            if (err.name === 'AbortError') {
+                setError('Request timeout - please try again');
+            } else {
+                setError(errorMessage);
+            }
             logger.error("Proof fetch error:", err);
             return null;
         } finally {
+            clearTimeout(timeoutId);
             setIsLoading(false);
         }
     }, []);
@@ -118,6 +133,12 @@ async function validateProofOnChain(
     proof: ProofResponse
 ): Promise<boolean> {
     try {
+        const isValidHashFormat = /^0x[a-fA-F0-9]{64}$/.test(proof.leaf) &&
+            proof.proof.every(p => /^0x[a-fA-F0-9]{64}$/.test(p.hash));
+        if (!isValidHashFormat) {
+            throw new Error("Invalid hash format in proof");
+        }
+
         const proofHashes = proof.proof.map((p) => p.hash as `0x${string}`);
         const proofFlags = proof.proof_flags;
 

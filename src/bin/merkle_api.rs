@@ -17,6 +17,7 @@ use thiserror::Error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
+use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 #[derive(Clone)]
 struct AppState {
@@ -186,11 +187,16 @@ async fn main() {
         .allow_methods([Method::GET, Method::OPTIONS])
         .allow_headers(Any);
 
-    // Note: Rate limiting disabled for localhost testing
-    // In production, use a reverse proxy (nginx) for rate limiting
+    let governor_conf = GovernorConfigBuilder::default()
+        .per_second(10)
+        .burst_size(30)
+        .finish()
+        .unwrap();
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/proof/:address", get(proof))
+        .layer(GovernorLayer { config: std::sync::Arc::new(governor_conf) })
         .layer(ServiceBuilder::new().layer(cors))
         .with_state(state);
 
