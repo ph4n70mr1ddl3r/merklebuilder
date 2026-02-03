@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 
 use sha3::{Digest, Keccak256};
 
+use crate::{ADDRESS_HEX_LENGTH, ADDRESS_SIZE, HASH_SIZE};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SiblingSide {
     Left,
@@ -50,7 +52,8 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
     let addresses_path = db_dir.join("addresses.bin");
     let (index, steps, total) =
         find_address_index(&addresses_path, &address)?.ok_or_else(|| {
-            "Address not found in addresses.bin (ensure file is sorted and matches input)".to_string()
+            "Address not found in addresses.bin (ensure file is sorted and matches input)"
+                .to_string()
         })?;
 
     let leaf_hash = hash_leaf(&address);
@@ -63,7 +66,9 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
         let layer_path = db_dir.join(filename);
         if !layer_path.exists() {
             if level == 0 {
-                return Err("No layer files found (expected layer00.bin, layer01.bin, ...)".to_string());
+                return Err(
+                    "No layer files found (expected layer00.bin, layer01.bin, ...)".to_string(),
+                );
             }
             return Err(format!(
                 "Missing layer file for level {} (expected {})",
@@ -125,16 +130,18 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
     }
 }
 
-pub fn parse_address(raw: &str) -> Result<[u8; 20], String> {
+pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], String> {
     let cleaned = raw
         .strip_prefix("0x")
         .or_else(|| raw.strip_prefix("0X"))
         .unwrap_or(raw);
-    if cleaned.len() != 40 {
-        return Err("Address must be 40 hex characters after 0x".to_string());
+    if cleaned.len() != ADDRESS_HEX_LENGTH {
+        return Err(format!(
+            "Address must be {ADDRESS_HEX_LENGTH} hex characters after 0x"
+        ));
     }
 
-    let mut buf = [0u8; 20];
+    let mut buf = [0u8; ADDRESS_SIZE];
     hex::decode_to_slice(cleaned, &mut buf).map_err(|_| "Invalid hex in address".to_string())?;
     Ok(buf)
 }
@@ -147,7 +154,7 @@ pub fn normalize_hex(raw: &str) -> String {
     }
 }
 
-pub fn hash_leaf(address: &[u8; 20]) -> [u8; 32] {
+pub fn hash_leaf(address: &[u8; ADDRESS_SIZE]) -> [u8; HASH_SIZE] {
     let mut hasher = Keccak256::new();
     hasher.update(address);
     hasher.finalize().into()
@@ -158,58 +165,56 @@ pub fn layer_node_count(path: &Path) -> Result<usize, String> {
         .and_then(|f| f.metadata())
         .map_err(|e| format!("Failed to read {}: {e}", path.display()))?
         .len();
-    if len % 32 != 0 {
+    if len % HASH_SIZE as u64 != 0 {
         return Err(format!(
-            "Layer file {} is not a multiple of 32 bytes ({len})",
+            "Layer file {} is not a multiple of {HASH_SIZE} bytes ({len})",
             path.display()
         ));
     }
-    Ok((len / 32) as usize)
+    Ok((len / HASH_SIZE as u64) as usize)
 }
 
-pub fn read_node(path: &Path, index: usize) -> Result<[u8; 32], String> {
-    let mut file = File::open(path)
-        .map_err(|e| format!("Unable to open {}: {e}", path.display()))?;
-    file
-        .seek(SeekFrom::Start((index as u64) * 32))
+pub fn read_node(path: &Path, index: usize) -> Result<[u8; HASH_SIZE], String> {
+    let mut file =
+        File::open(path).map_err(|e| format!("Unable to open {}: {e}", path.display()))?;
+    file.seek(SeekFrom::Start((index as u64) * HASH_SIZE as u64))
         .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
-    let mut buf = [0u8; 32];
-    file
-        .read_exact(&mut buf)
+    let mut buf = [0u8; HASH_SIZE];
+    file.read_exact(&mut buf)
         .map_err(|e| format!("Read failed in {}: {e}", path.display()))?;
     Ok(buf)
 }
 
 pub fn find_address_index(
     path: &Path,
-    target: &[u8; 20],
+    target: &[u8; ADDRESS_SIZE],
 ) -> Result<Option<(usize, usize, usize)>, String> {
-    let mut file = File::open(path)
-        .map_err(|e| format!("Failed to open {}: {e}", path.display()))?;
+    let mut file =
+        File::open(path).map_err(|e| format!("Failed to open {}: {e}", path.display()))?;
     let len = file
         .metadata()
         .map_err(|e| format!("Failed to stat {}: {e}", path.display()))?
         .len();
-    if len % 20 != 0 {
-        return Err(format!("addresses.bin is not a multiple of 20 bytes ({len})"));
+    if len % ADDRESS_SIZE as u64 != 0 {
+        return Err(format!(
+            "addresses.bin is not a multiple of {ADDRESS_SIZE} bytes ({len})"
+        ));
     }
-    let total = (len / 20) as usize;
+    let total = (len / ADDRESS_SIZE as u64) as usize;
     if total == 0 {
         return Ok(None);
     }
 
     let mut low = 0usize;
     let mut high = total;
-    let mut buf = [0u8; 20];
+    let mut buf = [0u8; ADDRESS_SIZE];
     let mut steps = 0usize;
 
     while low < high {
         let mid = (low + high) / 2;
-        file
-            .seek(SeekFrom::Start((mid as u64) * 20))
+        file.seek(SeekFrom::Start((mid as u64) * ADDRESS_SIZE as u64))
             .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
-        file
-            .read_exact(&mut buf)
+        file.read_exact(&mut buf)
             .map_err(|e| format!("Read failed in {}: {e}", path.display()))?;
         steps = steps.saturating_add(1);
         match buf.cmp(target) {
@@ -226,11 +231,11 @@ pub fn find_address_index(
     Ok(None)
 }
 
-pub fn to_hex32(bytes: &[u8; 32]) -> String {
+pub fn to_hex32(bytes: &[u8; HASH_SIZE]) -> String {
     format!("0x{}", hex::encode(bytes))
 }
 
-pub fn to_hex20(bytes: &[u8; 20]) -> String {
+pub fn to_hex20(bytes: &[u8; ADDRESS_SIZE]) -> String {
     format!("0x{}", hex::encode(bytes))
 }
 
@@ -263,4 +268,95 @@ pub fn available_layers(db_dir: &Path) -> Vec<PathBuf> {
         }
     }
     layers
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sibling_side() {
+        assert_eq!(SiblingSide::Left.as_str(), "left");
+        assert_eq!(SiblingSide::Right.as_str(), "right");
+        assert!(SiblingSide::Left.proof_flag());
+        assert!(!SiblingSide::Right.proof_flag());
+    }
+
+    #[test]
+    fn test_parse_address_with_0x() {
+        let result = parse_address("0x1234567890123456789012345678901234567890");
+        assert!(result.is_ok());
+        let addr = result.unwrap();
+        assert_eq!(
+            addr,
+            [
+                0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, 0x78,
+                0x90, 0x12, 0x34, 0x56, 0x78, 0x90
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_address_without_prefix() {
+        let result = parse_address("1234567890123456789012345678901234567890");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_address_too_short() {
+        let result = parse_address("0x1234");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("40 hex"));
+    }
+
+    #[test]
+    fn test_parse_address_invalid_hex() {
+        let result = parse_address("0x123456789012345678901234567890123456789g");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err();
+        assert!(err_msg.contains("Invalid hex"));
+    }
+
+    #[test]
+    fn test_normalize_hex() {
+        assert_eq!(normalize_hex("0x1234"), "0x1234");
+        assert_eq!(normalize_hex("1234"), "0x1234");
+        assert_eq!(normalize_hex("0X1234"), "0X1234");
+    }
+
+    #[test]
+    fn test_hash_leaf() {
+        let address = [0u8; ADDRESS_SIZE];
+        let hash = hash_leaf(&address);
+        assert_eq!(hash.len(), HASH_SIZE);
+        let different_address = [1u8; ADDRESS_SIZE];
+        let different_hash = hash_leaf(&different_address);
+        assert_ne!(hash, different_hash);
+    }
+
+    #[test]
+    fn test_to_hex32() {
+        let bytes = [0x01, 0x02, 0x03, 0x04u8];
+        let mut full_bytes = [0u8; HASH_SIZE];
+        full_bytes[0..4].copy_from_slice(&bytes);
+        let hex = to_hex32(&full_bytes);
+        assert!(hex.starts_with("0x"));
+        assert_eq!(hex.len(), 66);
+    }
+
+    #[test]
+    fn test_to_hex20() {
+        let bytes = [0x01, 0x02, 0x03, 0x04u8];
+        let mut full_bytes = [0u8; ADDRESS_SIZE];
+        full_bytes[0..4].copy_from_slice(&bytes);
+        let hex = to_hex20(&full_bytes);
+        assert!(hex.starts_with("0x"));
+        assert_eq!(hex.len(), 42);
+    }
+
+    #[test]
+    fn test_layer_node_count_invalid_file() {
+        let result = layer_node_count(Path::new("/nonexistent/path"));
+        assert!(result.is_err());
+    }
 }

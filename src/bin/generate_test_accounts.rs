@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::process;
 
-use k256::elliptic_curve::rand_core::SeedableRng;
 use k256::SecretKey;
+use k256::elliptic_curve::rand_core::SeedableRng;
 use merklebuilder::ethereum_address;
 use rand_chacha::ChaCha20Rng;
 use serde::Serialize;

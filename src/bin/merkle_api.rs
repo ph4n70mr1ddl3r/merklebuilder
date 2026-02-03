@@ -3,18 +3,18 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use axum::Json;
+use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::{Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::Json;
-use axum::Router;
 use merklebuilder::merkle::{
-    available_layers, build_proof, ensure_db_present, to_hex32, ProofResult,
+    ProofResult, available_layers, build_proof, ensure_db_present, to_hex32,
 };
 use serde::Serialize;
-use tokio::net::TcpListener;
 use thiserror::Error;
+use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -191,10 +191,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/proof/:address", get(proof))
-        .layer(
-            ServiceBuilder::new()
-                .layer(cors)
-        )
+        .layer(ServiceBuilder::new().layer(cors))
         .with_state(state);
 
     let listener = match TcpListener::bind(config.listen).await {

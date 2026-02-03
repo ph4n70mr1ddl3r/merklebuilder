@@ -1,11 +1,13 @@
 use std::env;
-use std::fs::{File, create_dir_all};
+use std::fs::{create_dir_all, File};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 
 use indicatif::{ProgressBar, ProgressStyle};
-use sha3::{Digest, Keccak256};
+
+use merklebuilder::merkle::{hash_leaf, parse_address};
+use merklebuilder::{ADDRESS_SIZE, HASH_SIZE};
 
 fn main() {
     let (input, output_dir) = match parse_args() {
@@ -78,15 +80,20 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
     let addresses_path = out_dir.join("addresses.bin");
     write_addresses(&addresses_path, &addresses)?;
 
-    let leaves: Vec<[u8; 32]> = addresses.iter().map(hash_leaf).collect();
+    let leaves: Vec<[u8; HASH_SIZE]> = addresses.iter().map(hash_leaf).collect();
     let layers = build_layers(leaves)?;
     write_layers(&out_dir, &layers)?;
 
     progress.finish_and_clear();
-    let root_hex = hex::encode(layers.last().and_then(|l| l.first()).unwrap());
+    let root_hex = layers
+        .last()
+        .and_then(|l| l.first())
+        .map(hex::encode)
+        .ok_or("Failed to get root hash")?;
     println!(
-        "Wrote {} unique addresses (20-byte each) to {}",
+        "Wrote {} unique addresses ({}-byte each) to {}",
         addresses.len(),
+        ADDRESS_SIZE,
         addresses_path.display()
     );
     println!(
@@ -98,23 +105,9 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-fn parse_address(raw: &str) -> Result<[u8; 20], String> {
-    let cleaned = raw
-        .strip_prefix("0x")
-        .or_else(|| raw.strip_prefix("0X"))
-        .unwrap_or(raw);
-    if cleaned.len() != 40 {
-        return Err("Address must be 40 hex characters after 0x".to_string());
-    }
-
-    let mut buf = [0u8; 20];
-    hex::decode_to_slice(cleaned, &mut buf).map_err(|_| "Invalid hex in address".to_string())?;
-    Ok(buf)
-}
-
 fn write_addresses(
     path: &PathBuf,
-    addresses: &[[u8; 20]],
+    addresses: &[[u8; ADDRESS_SIZE]],
 ) -> Result<(), Box<dyn std::error::Error>> {
     let out_file = File::create(path)?;
     let mut writer = BufWriter::new(out_file);
@@ -125,7 +118,7 @@ fn write_addresses(
     Ok(())
 }
 
-fn write_layers(dir: &Path, layers: &[Vec<[u8; 32]>]) -> Result<(), Box<dyn std::error::Error>> {
+fn write_layers(dir: &Path, layers: &[Vec<[u8; HASH_SIZE]>]) -> Result<(), Box<dyn std::error::Error>> {
     for (idx, layer) in layers.iter().enumerate() {
         let filename = format!("layer{:02}.bin", idx);
         let path = dir.join(filename);
@@ -138,13 +131,9 @@ fn write_layers(dir: &Path, layers: &[Vec<[u8; 32]>]) -> Result<(), Box<dyn std:
     Ok(())
 }
 
-fn hash_leaf(address: &[u8; 20]) -> [u8; 32] {
-    let mut hasher = Keccak256::new();
-    hasher.update(address);
-    hasher.finalize().into()
-}
+use sha3::{Digest, Keccak256};
 
-fn hash_pair(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+fn hash_pair(left: &[u8; HASH_SIZE], right: &[u8; HASH_SIZE]) -> [u8; HASH_SIZE] {
     let mut hasher = Keccak256::new();
     hasher.update(left);
     hasher.update(right);
@@ -152,8 +141,8 @@ fn hash_pair(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
 }
 
 fn build_layers(
-    mut current: Vec<[u8; 32]>,
-) -> Result<Vec<Vec<[u8; 32]>>, Box<dyn std::error::Error>> {
+    mut current: Vec<[u8; HASH_SIZE]>,
+) -> Result<Vec<Vec<[u8; HASH_SIZE]>>, Box<dyn std::error::Error>> {
     if current.is_empty() {
         return Err("Cannot build tree from empty leaf set".into());
     }
@@ -167,7 +156,7 @@ fn build_layers(
     }
 
     let total_hashes = total_hash_ops(current.len());
-    
+
     // Only show progress bar for larger datasets
     let show_progress = total_hashes >= 100;
     let progress = if show_progress {
@@ -175,13 +164,13 @@ fn build_layers(
     } else {
         None
     };
-    
+
     let update_every = if show_progress {
         progress_update_interval(total_hashes)
     } else {
         usize::MAX // Never update
     };
-    
+
     let mut done = 0usize;
 
     while current.len() > 1 {
@@ -203,7 +192,7 @@ fn build_layers(
     if let Some(p) = progress {
         p.finish_and_clear();
     }
-    
+
     Ok(layers)
 }
 

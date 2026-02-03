@@ -4,8 +4,8 @@ use std::io::{BufWriter, Write};
 use std::process;
 
 use indicatif::{ProgressBar, ProgressStyle};
-use k256::elliptic_curve::rand_core::OsRng;
 use k256::SecretKey;
+use k256::elliptic_curve::rand_core::OsRng;
 use merklebuilder::ethereum_address;
 
 fn main() {
