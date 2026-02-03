@@ -228,22 +228,14 @@ async fn proof(
     Ok(Json(proof.into()))
 }
 
-fn classify_error(err: String) -> ApiError {
-    if matches_invalid_input(&err) {
-        ApiError::BadRequest(err)
-    } else if matches_not_found(&err) {
-        ApiError::NotFound(err)
-    } else {
-        ApiError::Internal(err)
+fn classify_error(err: merklebuilder::merkle::MerkleError) -> ApiError {
+    use merklebuilder::merkle::MerkleError;
+    match err {
+        MerkleError::InvalidAddress(_) | MerkleError::InvalidHex(_) => ApiError::BadRequest(err.to_string()),
+        MerkleError::AddressNotFound => ApiError::NotFound(err.to_string()),
+        MerkleError::Internal(_) => ApiError::Internal(err.to_string()),
+        _ => ApiError::Internal(err.to_string()),
     }
-}
-
-fn matches_invalid_input(err: &str) -> bool {
-    err.contains("Address must") || err.contains("Invalid hex")
-}
-
-fn matches_not_found(err: &str) -> bool {
-    err.contains("not found in addresses.bin")
 }
 
 #[cfg(test)]
@@ -330,7 +322,7 @@ mod tests {
 
         let result = build_proof(&db_dir, address_str);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("not found"));
+        assert!(result.unwrap_err().to_string().contains("not found"));
     }
 
     #[test]
@@ -346,22 +338,25 @@ mod tests {
 
     #[test]
     fn test_classify_error_invalid_input() {
-        let err = "Address must be 40 hex characters";
-        let api_error = classify_error(err.to_string());
+        use merklebuilder::merkle::MerkleError;
+        let err = MerkleError::InvalidAddress("Address must be 40 hex characters".to_string());
+        let api_error = classify_error(err);
         assert!(matches!(api_error, ApiError::BadRequest(_)));
     }
 
     #[test]
     fn test_classify_error_not_found() {
-        let err = "not found in addresses.bin";
-        let api_error = classify_error(err.to_string());
+        use merklebuilder::merkle::MerkleError;
+        let err = MerkleError::AddressNotFound;
+        let api_error = classify_error(err);
         assert!(matches!(api_error, ApiError::NotFound(_)));
     }
 
     #[test]
     fn test_classify_error_internal() {
-        let err = "Some internal error";
-        let api_error = classify_error(err.to_string());
+        use merklebuilder::merkle::MerkleError;
+        let err = MerkleError::Internal("Some internal error".to_string());
+        let api_error = classify_error(err);
         assert!(matches!(api_error, ApiError::Internal(_)));
     }
 }

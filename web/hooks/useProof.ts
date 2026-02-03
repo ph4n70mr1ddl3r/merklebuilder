@@ -8,6 +8,10 @@ import { DEMO_ABI } from "../lib/airdrop";
 import type { ProofResponse } from "../lib/types";
 import { logger } from "../lib/logger";
 
+const API_TIMEOUT_MS = 10000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_BASE_MS = 1000;
+
 export function useProof() {
     const [proof, setProof] = useState<ProofResponse | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +36,7 @@ export function useProof() {
         setIsValidated(false);
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
         try {
             // Check cache first
@@ -57,10 +61,9 @@ export function useProof() {
                 }
             }
 
-            const maxRetries = 3;
             let lastError: Error | null = null;
 
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
+            for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
                 try {
                     const res = await fetch(`${API_BASE}/proof/${normalizedAddress}`, {
                         signal: controller.signal,
@@ -75,7 +78,6 @@ export function useProof() {
                     const data = JSON.parse(rawData);
 
                     // Validate response structure
-
                     const validatedData = ProofResponseSchema.parse(data);
 
                     const proofAddress = normalizeAddress(validatedData.address);
@@ -94,8 +96,8 @@ export function useProof() {
                     return validatedData;
                 } catch (fetchErr) {
                     lastError = fetchErr instanceof Error ? fetchErr : new Error(String(fetchErr));
-                    if (attempt < maxRetries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                    if (attempt < MAX_RETRIES - 1) {
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * RETRY_DELAY_BASE_MS));
                     }
                 }
             }

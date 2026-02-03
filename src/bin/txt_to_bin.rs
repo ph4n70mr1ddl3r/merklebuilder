@@ -7,7 +7,7 @@ use std::process;
 
 use merklebuilder::merkle::{hash_leaf, parse_address};
 use merklebuilder::progress::{build_progress, progress_update_interval};
-use merklebuilder::{ADDRESS_SIZE, HASH_SIZE};
+use merklebuilder::{ADDRESS_SIZE, HASH_SIZE, MAX_ADDRESSES};
 
 fn main() {
     let (input, output_dir) = match parse_args() {
@@ -48,6 +48,14 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
     let total = count_non_empty_lines(input_path)?;
     if total == 0 {
         return Err("Input file contained no addresses".into());
+    }
+
+    if total > MAX_ADDRESSES {
+        return Err(format!(
+            "Input file contains {} addresses, which exceeds the maximum of {}",
+            total, MAX_ADDRESSES
+        )
+        .into());
     }
 
     let file = File::open(input_path)?;

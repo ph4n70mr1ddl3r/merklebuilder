@@ -1,7 +1,23 @@
 import { envSchema } from "./validators";
 import { logger } from "./logger";
 
-function validateEnv() {
+interface EnvConfig {
+    NEXT_PUBLIC_API_BASE: string;
+    NEXT_PUBLIC_CONTRACT_ADDRESS: string;
+    NEXT_PUBLIC_CHAIN_ID: string;
+    NEXT_PUBLIC_CHAIN_NAME: string;
+    NEXT_PUBLIC_RPC_URL: string;
+}
+
+const DEV_DEFAULTS: EnvConfig = {
+    NEXT_PUBLIC_API_BASE: "http://localhost:3000",
+    NEXT_PUBLIC_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000000",
+    NEXT_PUBLIC_CHAIN_ID: "11155111",
+    NEXT_PUBLIC_CHAIN_NAME: "Sepolia",
+    NEXT_PUBLIC_RPC_URL: "https://1rpc.io/sepolia",
+};
+
+function validateEnv(): EnvConfig {
     try {
         const env = envSchema.parse({
             NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE,
@@ -18,13 +34,7 @@ function validateEnv() {
             throw new Error("Missing required environment variables. Please check your .env configuration.");
         }
         logger.error("⚠️  Using localhost defaults for development only.");
-        return {
-            NEXT_PUBLIC_API_BASE: "http://localhost:3000",
-            NEXT_PUBLIC_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000000",
-            NEXT_PUBLIC_CHAIN_ID: "11155111",
-            NEXT_PUBLIC_CHAIN_NAME: "Sepolia",
-            NEXT_PUBLIC_RPC_URL: "https://1rpc.io/sepolia",
-        };
+        return DEV_DEFAULTS;
     }
 }
 
@@ -32,6 +42,6 @@ const env = validateEnv();
 
 export const API_BASE = env.NEXT_PUBLIC_API_BASE;
 export const CONTRACT_ADDRESS = env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-export const CHAIN_ID = Number(env.NEXT_PUBLIC_CHAIN_ID) as 11155111;
+export const CHAIN_ID = Number(env.NEXT_PUBLIC_CHAIN_ID);
 export const CHAIN_NAME = env.NEXT_PUBLIC_CHAIN_NAME;
 export const RPC_URL = env.NEXT_PUBLIC_RPC_URL;
