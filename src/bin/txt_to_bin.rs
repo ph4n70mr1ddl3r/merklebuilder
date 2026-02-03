@@ -185,15 +185,15 @@ fn build_layers(
     let mut done = 0usize;
 
     while current.len() > 1 {
-        let mut next = Vec::with_capacity((current.len() + 1) / 2);
+        let mut next = Vec::with_capacity(current.len().div_ceil(2));
         for chunk in current.chunks(2) {
             let right = if chunk.len() == 2 { chunk[1] } else { chunk[0] };
             next.push(hash_pair(&chunk[0], &right));
             done = done.saturating_add(1);
-            if let Some(ref p) = progress {
-                if done % update_every == 0 || done == total_hashes {
-                    p.set_position(done as u64);
-                }
+            if let Some(ref p) = progress
+                && (done.is_multiple_of(update_every) || done == total_hashes)
+            {
+                p.set_position(done as u64);
             }
         }
         layers.push(next.clone());
@@ -210,7 +210,7 @@ fn build_layers(
 fn total_hash_ops(mut count: usize) -> usize {
     let mut total = 0usize;
     while count > 1 {
-        let hashes = (count + 1) / 2;
+        let hashes = count.div_ceil(2);
         total = total.saturating_add(hashes);
         count = hashes;
     }
