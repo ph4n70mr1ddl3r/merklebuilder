@@ -231,7 +231,9 @@ async fn proof(
 fn classify_error(err: merklebuilder::merkle::MerkleError) -> ApiError {
     use merklebuilder::merkle::MerkleError;
     match err {
-        MerkleError::InvalidAddress(_) | MerkleError::InvalidHex(_) => ApiError::BadRequest(err.to_string()),
+        MerkleError::InvalidAddress(_) | MerkleError::InvalidHex(_) => {
+            ApiError::BadRequest(err.to_string())
+        }
         MerkleError::AddressNotFound => ApiError::NotFound(err.to_string()),
         MerkleError::Internal(_) => ApiError::Internal(err.to_string()),
         _ => ApiError::Internal(err.to_string()),

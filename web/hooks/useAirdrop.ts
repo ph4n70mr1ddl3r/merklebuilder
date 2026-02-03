@@ -58,12 +58,16 @@ export function useAirdrop(provider: BrowserProvider | null, account: string | n
                 contract.getInvitations(account),
             ]);
 
-            const invitees =
-                (slots && (slots as any).invitees ? ((slots as any).invitees as string[]) : undefined) ??
-                (Array.isArray(slots?.[0]) ? (slots[0] as string[]) : []);
-            const used =
-                (slots && (slots as any).used ? ((slots as any).used as boolean[]) : undefined) ??
-                (Array.isArray(slots?.[1]) ? (slots[1] as boolean[]) : []);
+            const invitees = Array.isArray(slots?.[0]) 
+                ? (slots[0] as string[]) 
+                : Array.isArray((slots as any)?.invitees) 
+                    ? ((slots as any).invitees as string[])
+                    : [];
+            const used = Array.isArray(slots?.[1]) 
+                ? (slots[1] as boolean[]) 
+                : Array.isArray((slots as any)?.used) 
+                    ? ((slots as any).used as boolean[])
+                    : [];
 
             const parsedSlots =
                 invitees?.map((inv, idx) => ({

@@ -163,7 +163,10 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Merk
 
         let is_left = path_index % 2 == 0;
         let sibling_idx = if is_left {
-            path_index.saturating_add(1).min(node_count - 1)
+            path_index
+                .checked_add(1)
+                .unwrap_or(node_count)
+                .min(node_count - 1)
         } else {
             path_index.saturating_sub(1)
         };
@@ -289,17 +292,25 @@ pub fn find_address_index(
     let mut steps = 0usize;
 
     while low < high {
-        let mid = low.wrapping_add(high) / 2;
+        let mid = low.checked_add(high).ok_or(MerkleError::Internal(
+            "Overflow in binary search".to_string(),
+        ))? / 2;
         file.seek(SeekFrom::Start(
-            (mid as u64).saturating_mul(ADDRESS_SIZE as u64),
+            (mid as u64)
+                .checked_mul(ADDRESS_SIZE as u64)
+                .ok_or(MerkleError::Internal("Overflow in seek offset".to_string()))?,
         ))
         .map_err(|e| MerkleError::FileIo(format!("Seek failed in {}: {e}", path.display())))?;
         file.read_exact(&mut buf)
             .map_err(|e| MerkleError::FileIo(format!("Read failed in {}: {e}", path.display())))?;
-        steps = steps.saturating_add(1);
+        steps = steps.checked_add(1).ok_or(MerkleError::Internal(
+            "Overflow in step counter".to_string(),
+        ))?;
         match buf.cmp(target) {
             Ordering::Less => {
-                low = mid.saturating_add(1);
+                low = mid.checked_add(1).ok_or(MerkleError::Internal(
+                    "Overflow in binary search".to_string(),
+                ))?;
             }
             Ordering::Greater => {
                 high = mid;
