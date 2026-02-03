@@ -8,6 +8,7 @@ pub const ADDRESS_SIZE: usize = 20;
 pub const HASH_SIZE: usize = 32;
 pub const ADDRESS_HEX_LENGTH: usize = 40;
 
+#[must_use]
 pub fn ethereum_address(secret_key: &SecretKey) -> String {
     let public_key = secret_key.public_key();
     let encoded = public_key.to_encoded_point(false);
@@ -18,10 +19,11 @@ pub fn ethereum_address(secret_key: &SecretKey) -> String {
     to_checksum_address(address_bytes)
 }
 
+#[must_use]
 pub fn to_checksum_address(address: &[u8]) -> String {
     let mut hex = String::with_capacity(40);
     for byte in address {
-        hex.push_str(&format!("{:02x}", byte));
+        hex.push_str(&format!("{byte:02x}"));
     }
 
     let hash = Keccak256::digest(hex.as_bytes());
@@ -46,6 +48,7 @@ pub fn to_checksum_address(address: &[u8]) -> String {
     checksummed
 }
 
+#[must_use]
 pub fn normalize_address_hex(hex: &str) -> String {
     hex.strip_prefix("0x")
         .or_else(|| hex.strip_prefix("0X"))

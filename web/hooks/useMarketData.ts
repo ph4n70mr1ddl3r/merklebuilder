@@ -67,7 +67,5 @@ export function useMarketData(account?: string) {
         demoBalance,
         ethBalance,
         refreshReserves,
-        setDemoBalance,
-        setEthBalance
     };
 }

@@ -217,7 +217,7 @@ async fn proof(
     State(state): State<AppState>,
 ) -> Result<Json<ProofResponse>, ApiError> {
     let proof = build_proof(&state.db_dir, &address).map_err(classify_error)?;
-    Ok(Json(ProofResponse::from(proof)))
+    Ok(Json(proof.into()))
 }
 
 fn classify_error(err: String) -> ApiError {

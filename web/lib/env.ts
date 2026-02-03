@@ -24,7 +24,7 @@ function validateEnv() {
         });
     } catch (error) {
         logger.error("❌ Invalid environment variables:", error);
-        // Return defaults in case of validation failure to prevent app crash
+        logger.error("Using default values for development. In production, set correct environment variables.");
         return DEFAULTS;
     }
 }

@@ -14,6 +14,7 @@ pub enum SiblingSide {
 }
 
 impl SiblingSide {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             SiblingSide::Left => "left",
@@ -21,6 +22,7 @@ impl SiblingSide {
         }
     }
 
+    #[must_use]
     pub fn proof_flag(&self) -> bool {
         matches!(self, SiblingSide::Left)
     }
@@ -46,6 +48,11 @@ pub struct ProofResult {
     pub steps: Vec<ProofStep>,
 }
 
+/// Builds a Merkle proof for the given address.
+///
+/// # Errors
+/// Returns an error if the address is invalid, not found in the database,
+/// or if the layer files are missing or corrupted.
 pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, String> {
     let address = parse_address(address_str)?;
     let db_dir = db_dir.to_path_buf();
@@ -62,7 +69,7 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
     let mut path_index = index;
 
     loop {
-        let filename = format!("layer{:02}.bin", level);
+        let filename = format!("layer{level:02}.bin");
         let layer_path = db_dir.join(filename);
         if !layer_path.exists() {
             if level == 0 {
@@ -79,12 +86,11 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
 
         let node_count = layer_node_count(&layer_path)?;
         if node_count == 0 {
-            return Err(format!("Layer {:02} is empty", level));
+            return Err(format!("Layer {level:02} is empty"));
         }
         if path_index >= node_count {
             return Err(format!(
-                "Layer {:02} length {} too small for index {}",
-                level, node_count, path_index
+                "Layer {level:02} length {node_count} too small for index {path_index}"
             ));
         }
 
@@ -130,6 +136,11 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
     }
 }
 
+/// Parses an Ethereum address from a hex string.
+///
+/// # Errors
+/// Returns an error if the address is not a valid 40-character hex string
+/// or if the hex decoding fails.
 pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], String> {
     let cleaned = raw
         .strip_prefix("0x")
@@ -146,11 +157,12 @@ pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], String> {
     Ok(buf)
 }
 
+#[must_use]
 pub fn normalize_hex(raw: &str) -> String {
     if raw.starts_with("0x") {
         raw.to_string()
     } else if let Some(stripped) = raw.strip_prefix("0X") {
-        format!("0x{}", stripped)
+        format!("0x{stripped}")
     } else {
         format!("0x{raw}")
     }
@@ -213,7 +225,7 @@ pub fn find_address_index(
     let mut steps = 0usize;
 
     while low < high {
-        let mid = (low + high) / 2;
+        let mid = low + (high - low) / 2;
         file.seek(SeekFrom::Start((mid as u64) * ADDRESS_SIZE as u64))
             .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
         file.read_exact(&mut buf)
@@ -233,14 +245,20 @@ pub fn find_address_index(
     Ok(None)
 }
 
+#[must_use]
 pub fn to_hex32(bytes: &[u8; HASH_SIZE]) -> String {
     format!("0x{}", hex::encode(bytes))
 }
 
+#[must_use]
 pub fn to_hex20(bytes: &[u8; ADDRESS_SIZE]) -> String {
     format!("0x{}", hex::encode(bytes))
 }
 
+/// Checks that required Merkle database files exist.
+///
+/// # Errors
+/// Returns an error if addresses.bin or layer00.bin is missing.
 pub fn ensure_db_present(db_dir: &Path) -> Result<(), String> {
     let addresses = db_dir.join("addresses.bin");
     if !addresses.exists() {

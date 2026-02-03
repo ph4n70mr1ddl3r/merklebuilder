@@ -199,12 +199,5 @@ export function useAirdropData(account?: string) {
         hasCheckedEligibility,
         refreshOnChain,
         refreshProof,
-        setHasClaimed,
-        setInvitedBy,
-        setInvitesCreated,
-        setInvitationSlots,
-        setClaimCount,
-        setProof,
-        setHasCheckedEligibility
     };
 }

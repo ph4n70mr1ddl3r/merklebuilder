@@ -97,14 +97,17 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
         addresses_path.display()
     );
     println!(
-        "Built {} Merkle layers (root: 0x{}) into {}",
+        "Built {} Merkle layers (root: 0x{root_hex}) into {}",
         layers.len(),
-        root_hex,
         out_dir.display()
     );
     Ok(())
 }
 
+/// Writes addresses to binary file.
+///
+/// # Errors
+/// Returns an error if file creation or writing fails.
 fn write_addresses(
     path: &PathBuf,
     addresses: &[[u8; ADDRESS_SIZE]],
@@ -120,7 +123,7 @@ fn write_addresses(
 
 fn write_layers(dir: &Path, layers: &[Vec<[u8; HASH_SIZE]>]) -> Result<(), Box<dyn std::error::Error>> {
     for (idx, layer) in layers.iter().enumerate() {
-        let filename = format!("layer{:02}.bin", idx);
+        let filename = format!("layer{idx:02}.bin");
         let path = dir.join(filename);
         let mut writer = BufWriter::new(File::create(path)?);
         for node in layer {
@@ -140,6 +143,10 @@ fn hash_pair(left: &[u8; HASH_SIZE], right: &[u8; HASH_SIZE]) -> [u8; HASH_SIZE]
     hasher.finalize().into()
 }
 
+/// Builds Merkle tree layers from leaf hashes.
+///
+/// # Errors
+/// Returns an error if leaf set is empty.
 fn build_layers(
     mut current: Vec<[u8; HASH_SIZE]>,
 ) -> Result<Vec<Vec<[u8; HASH_SIZE]>>, Box<dyn std::error::Error>> {
@@ -219,6 +226,7 @@ fn count_non_empty_lines(path: &str) -> Result<usize, Box<dyn std::error::Error>
     Ok(count)
 }
 
+#[must_use]
 fn build_progress(len: u64) -> ProgressBar {
     let bar = ProgressBar::new(len);
     let style = ProgressStyle::with_template(
