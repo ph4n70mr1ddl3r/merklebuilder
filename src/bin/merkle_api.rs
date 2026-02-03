@@ -13,6 +13,7 @@ use merklebuilder::merkle::{
     ProofResult, available_layers, build_proof, ensure_db_present, to_hex32,
 };
 use serde::Serialize;
+use sha3::Keccak256;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
@@ -236,4 +237,124 @@ fn matches_invalid_input(err: &str) -> bool {
 
 fn matches_not_found(err: &str) -> bool {
     err.contains("not found in addresses.bin")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use merklebuilder::merkle::build_proof;
+    use sha3::Digest;
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn hash_address(addr: &[u8]) -> [u8; 32] {
+        let mut hasher = Keccak256::new();
+        hasher.update(addr);
+        hasher.finalize().into()
+    }
+
+    fn hash_pair(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+        let mut hasher = Keccak256::new();
+        hasher.update(left);
+        hasher.update(right);
+        hasher.finalize().into()
+    }
+
+    fn create_test_db() -> (TempDir, PathBuf) {
+        let temp_dir = TempDir::new().unwrap();
+        let db_dir: PathBuf = temp_dir.path().to_path_buf();
+
+        let test_address = [0x01u8; 20];
+
+        let addresses_path = db_dir.join("addresses.bin");
+        let mut addresses_file = File::create(&addresses_path).unwrap();
+        addresses_file.write_all(&test_address).unwrap();
+        addresses_file.write_all(&[0x02u8; 20]).unwrap();
+        addresses_file.write_all(&[0x03u8; 20]).unwrap();
+
+        let addr1_hash = hash_address(&test_address);
+        let addr2_hash = hash_address(&[0x02u8; 20]);
+        let addr3_hash = hash_address(&[0x03u8; 20]);
+
+        let layer00_path = db_dir.join("layer00.bin");
+        let mut layer00_file = File::create(&layer00_path).unwrap();
+        layer00_file.write_all(&addr1_hash).unwrap();
+        layer00_file.write_all(&addr2_hash).unwrap();
+        layer00_file.write_all(&addr3_hash).unwrap();
+
+        let hash01 = hash_pair(&addr1_hash, &addr2_hash);
+        let hash23 = hash_pair(&addr3_hash, &addr3_hash);
+
+        let layer01_path = db_dir.join("layer01.bin");
+        let mut layer01_file = File::create(&layer01_path).unwrap();
+        layer01_file.write_all(&hash01).unwrap();
+        layer01_file.write_all(&hash23).unwrap();
+
+        let root_hash = hash_pair(&hash01, &hash23);
+
+        let layer02_path = db_dir.join("layer02.bin");
+        let mut layer02_file = File::create(&layer02_path).unwrap();
+        layer02_file.write_all(&root_hash).unwrap();
+
+        (temp_dir, db_dir)
+    }
+
+    #[test]
+    fn test_build_proof_success() {
+        let (_temp, db_dir) = create_test_db();
+        let address_str = "0x0101010101010101010101010101010101010101";
+
+        let result = build_proof(&db_dir, address_str);
+        assert!(result.is_ok());
+
+        let proof = result.unwrap();
+        assert_eq!(proof.index, 0);
+        assert_eq!(proof.total, 3);
+        assert_eq!(proof.root_level, 2);
+        assert!(!proof.steps.is_empty());
+    }
+
+    #[test]
+    fn test_build_proof_address_not_found() {
+        let (_temp, db_dir) = create_test_db();
+        let address_str = "0xffffffffffffffffffffffffffffffffffffffff";
+
+        let result = build_proof(&db_dir, address_str);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not found"));
+    }
+
+    #[test]
+    fn test_proof_result_structure() {
+        let (_temp, db_dir) = create_test_db();
+        let address_str = "0x0101010101010101010101010101010101010101";
+
+        let proof = build_proof(&db_dir, address_str).unwrap();
+        assert_eq!(proof.steps.len(), 2);
+        assert_eq!(proof.steps[0].level, 0);
+        assert_eq!(proof.steps[1].level, 1);
+    }
+
+    #[test]
+    fn test_classify_error_invalid_input() {
+        let err = "Address must be 40 hex characters";
+        let api_error = classify_error(err.to_string());
+        assert!(matches!(api_error, ApiError::BadRequest(_)));
+    }
+
+    #[test]
+    fn test_classify_error_not_found() {
+        let err = "not found in addresses.bin";
+        let api_error = classify_error(err.to_string());
+        assert!(matches!(api_error, ApiError::NotFound(_)));
+    }
+
+    #[test]
+    fn test_classify_error_internal() {
+        let err = "Some internal error";
+        let api_error = classify_error(err.to_string());
+        assert!(matches!(api_error, ApiError::Internal(_)));
+    }
 }

@@ -83,8 +83,8 @@ export function useProof() {
             setCachedProof(normalizedAddress, validatedData);
             
             return validatedData;
-        } catch (err: any) {
-            const errorMessage = err?.message || "Failed to fetch proof";
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Failed to fetch proof";
             setError(errorMessage);
             console.error("Proof fetch error:", err);
             return null;

@@ -112,7 +112,8 @@ export default function HomePage() {
       if (chain?.id && chain.id !== CHAIN_ID && switchChain) {
         try {
           await switchChain({ chainId: CHAIN_ID });
-        } catch {
+        } catch (err) {
+          console.error("Failed to switch chain:", err);
           return;
         }
       }
@@ -129,14 +130,18 @@ export default function HomePage() {
     try {
       const stored = localStorage.getItem("demo-slippage");
       if (stored) setSlippage(stored);
-    } catch {}
+    } catch (err) {
+      console.warn("Failed to read slippage from localStorage:", err);
+    }
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem("demo-slippage", slippage);
-    } catch {}
+    } catch (err) {
+      console.warn("Failed to write slippage to localStorage:", err);
+    }
   }, [slippage]);
 
   const connectWallet = async (connectorId?: string) => {
@@ -150,9 +155,10 @@ export default function HomePage() {
       await connect({ connector, chainId: CHAIN_ID });
       setShowProviderModal(false);
       toast.success("Wallet connected successfully!", { id: toastId });
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      toast.error(err?.message || "Unable to connect wallet.");
+      const message = err instanceof Error ? err.message : "Unable to connect wallet.";
+      toast.error(message);
     }
   };
 
@@ -227,7 +233,7 @@ export default function HomePage() {
       fireConfettiBurst();
       await airdrop.refreshOnChain(account);
       await market.refreshReserves(account);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
       setClaimError(friendlyError);
@@ -289,12 +295,12 @@ export default function HomePage() {
     if (chain?.id !== CHAIN_ID && switchChain) {
       try {
         await switchChain({ chainId: CHAIN_ID });
-      } catch {
-        toast.error("Switch to Sepolia to create invites.");
+      } catch (err) {
+        console.error("Failed to switch chain:", err);
         return;
       }
     }
-    
+
     try {
       setInviting(true);
       const toastId = toast.loading("Creating invitation…");
@@ -312,7 +318,7 @@ export default function HomePage() {
       toast.success("Invitation created.", { id: toastId });
       setInvitee("");
       await airdrop.refreshOnChain(account);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
@@ -357,7 +363,7 @@ export default function HomePage() {
       }
       toast.success("Invitation revoked.", { id: toastId });
       await airdrop.refreshOnChain(account);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
@@ -394,7 +400,7 @@ export default function HomePage() {
       toast.success("Swap confirmed. DEMO purchased.", { id: toastId });
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
@@ -411,7 +417,7 @@ export default function HomePage() {
   const handleSellExactDemo = async (demoAmount: bigint, minEthOut: bigint) => {
     if (!account) return;
     if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch { toast.error(`Switch to ${CHAIN_NAME}`); return; }
+      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { console.error(err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
     try {
       setTrading(true);
@@ -429,7 +435,7 @@ export default function HomePage() {
       toast.success("Swap confirmed. ETH received.", { id: toastId });
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
@@ -446,7 +452,7 @@ export default function HomePage() {
   const handleSpendExactEth = async (ethAmount: bigint, minDemoOut: bigint) => {
     if (!account) return;
     if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch { toast.error(`Switch to ${CHAIN_NAME}`); return; }
+      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { console.error(err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
     try {
       setTrading(true);
@@ -465,7 +471,7 @@ export default function HomePage() {
       toast.success("Swap confirmed. DEMO purchased.", { id: toastId });
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
@@ -482,7 +488,7 @@ export default function HomePage() {
   const handleReceiveExactEth = async (demoAmount: bigint, exactEthOut: bigint) => {
     if (!account) return;
     if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch { toast.error(`Switch to ${CHAIN_NAME}`); return; }
+      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { console.error(err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
     try {
       setTrading(true);
@@ -501,7 +507,7 @@ export default function HomePage() {
       toast.success("Swap confirmed. ETH received.", { id: toastId });
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
@@ -521,7 +527,9 @@ export default function HomePage() {
       await navigator.clipboard?.writeText(value);
       setCopiedKey(key);
       setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 3000);
-    } catch {}
+    } catch (err) {
+      console.warn("Failed to copy to clipboard:", err);
+    }
   };
 
   const copyInviteLink = async () => {
@@ -533,7 +541,8 @@ export default function HomePage() {
       toast.success("Invite link copied!");
       setCopiedKey("invite-link");
       setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), 3000);
-    } catch {
+    } catch (err) {
+      console.warn("Failed to copy invite link:", err);
       toast.error("Failed to copy link");
     }
   };

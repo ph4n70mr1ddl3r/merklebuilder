@@ -147,8 +147,10 @@ pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], String> {
 }
 
 pub fn normalize_hex(raw: &str) -> String {
-    if raw.starts_with("0x") || raw.starts_with("0X") {
+    if raw.starts_with("0x") {
         raw.to_string()
+    } else if raw.starts_with("0X") {
+        format!("0x{}", &raw[2..])
     } else {
         format!("0x{raw}")
     }
@@ -321,7 +323,7 @@ mod tests {
     fn test_normalize_hex() {
         assert_eq!(normalize_hex("0x1234"), "0x1234");
         assert_eq!(normalize_hex("1234"), "0x1234");
-        assert_eq!(normalize_hex("0X1234"), "0X1234");
+        assert_eq!(normalize_hex("0X1234"), "0x1234");
     }
 
     #[test]

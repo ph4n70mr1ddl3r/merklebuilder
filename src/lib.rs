@@ -46,6 +46,13 @@ pub fn to_checksum_address(address: &[u8]) -> String {
     checksummed
 }
 
+pub fn normalize_address_hex(hex: &str) -> String {
+    hex.strip_prefix("0x")
+        .or_else(|| hex.strip_prefix("0X"))
+        .map(|h| format!("0x{}", h.to_lowercase()))
+        .unwrap_or_else(|| hex.to_lowercase())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,7 +87,15 @@ mod tests {
     fn test_normalize_hex() {
         assert_eq!(merkle::normalize_hex("0x1234"), "0x1234");
         assert_eq!(merkle::normalize_hex("1234"), "0x1234");
-        assert_eq!(merkle::normalize_hex("0X1234"), "0X1234");
+        assert_eq!(normalize_address_hex("0X1234"), "0x1234");
+    }
+
+    #[test]
+    fn test_normalize_address_hex() {
+        assert_eq!(normalize_address_hex("0xABCDEF"), "0xabcdef");
+        assert_eq!(normalize_address_hex("0XABCDEF"), "0xabcdef");
+        assert_eq!(normalize_address_hex("ABCDEF"), "abcdef");
+        assert_eq!(normalize_address_hex("0xabcdef"), "0xabcdef");
     }
 
     #[test]
