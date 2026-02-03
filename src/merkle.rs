@@ -149,8 +149,8 @@ pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], String> {
 pub fn normalize_hex(raw: &str) -> String {
     if raw.starts_with("0x") {
         raw.to_string()
-    } else if raw.starts_with("0X") {
-        format!("0x{}", &raw[2..])
+    } else if let Some(stripped) = raw.strip_prefix("0X") {
+        format!("0x{}", stripped)
     } else {
         format!("0x{raw}")
     }

@@ -65,15 +65,16 @@ export function useAirdropData(account?: string) {
                 }),
             ]);
 
-            const invitees = (Array.isArray((slots as any)[0]) ? ((slots as any)[0] as string[]) : []) || [];
-            const used = (Array.isArray((slots as any)[1]) ? ((slots as any)[1] as boolean[]) : []) || [];
+            const slotsArray = Array.isArray(slots) ? slots : [];
+            const invitees = Array.isArray(slotsArray[0]) ? (slotsArray[0] as string[]) : [];
+            const used = Array.isArray(slotsArray[1]) ? (slotsArray[1] as boolean[]) : [];
             const parsedSlots = invitees?.map((inv, idx) => ({
                 invitee: inv && inv !== ZeroAddress ? inv : null,
                 used: Boolean(used?.[idx]),
             })) ?? [];
 
             setHasClaimed(Boolean(claimed));
-            setInvitedBy((inviter as string) === ZeroAddress ? null : (inviter as string));
+            setInvitedBy(inviter === ZeroAddress ? null : inviter);
             setInvitesCreated(Number(created));
             setClaimCount(Number(count));
             setFreeClaims(Number(free));
@@ -148,25 +149,25 @@ export function useAirdropData(account?: string) {
 
             // Check claim status immediately after fetching proof
             try {
-                const [claimedOnChain, inviterOnChain] = await Promise.all([
-                    readContract(wagmiConfig, {
-                        address: CONTRACT_ADDRESS as `0x${string}`,
-                        abi: DEMO_ABI,
-                        functionName: "hasClaimed",
-                        args: [target as `0x${string}`],
-                    }),
-                    readContract(wagmiConfig, {
-                        address: CONTRACT_ADDRESS as `0x${string}`,
-                        abi: DEMO_ABI,
-                        functionName: "invitedBy",
-                        args: [target as `0x${string}`],
-                    }),
-                ]);
+            const [claimedOnChain, inviterOnChain] = await Promise.all([
+                readContract(wagmiConfig, {
+                    address: CONTRACT_ADDRESS as `0x${string}`,
+                    abi: DEMO_ABI,
+                    functionName: "hasClaimed",
+                    args: [target as `0x${string}`],
+                }),
+                readContract(wagmiConfig, {
+                    address: CONTRACT_ADDRESS as `0x${string}`,
+                    abi: DEMO_ABI,
+                    functionName: "invitedBy",
+                    args: [target as `0x${string}`],
+                }),
+            ]);
 
-                const claimed = Boolean(claimedOnChain);
-                setHasClaimed(claimed);
-                const inviterAddr = (inviterOnChain as string) === ZeroAddress ? null : (inviterOnChain as string);
-                setInvitedBy(inviterAddr);
+            const claimed = Boolean(claimedOnChain);
+            setHasClaimed(claimed);
+            const inviterAddr = inviterOnChain === ZeroAddress ? null : inviterOnChain;
+            setInvitedBy(inviterAddr);
 
                 if (claimed) {
                     toast.success("You've already claimed your tokens!");

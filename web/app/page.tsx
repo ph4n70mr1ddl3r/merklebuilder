@@ -29,17 +29,22 @@ declare global {
   }
 }
 
+const MAX_SLIPPAGE_PERCENT = 100;
+const SLIPPAGE_BPS_MULTIPLIER = 100;
+const MAX_SLIPPAGE_BPS = 10000n;
+const DECIMAL_PLACES = 2;
+
 const parseSlippageBps = (value: string): bigint | null => {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const match = trimmed.match(/^(\d{1,3})(?:\.(\d{0,2}))?$/);
   if (!match) return null;
   const whole = Number(match[1]);
-  if (whole > 100) return null;
+  if (whole > MAX_SLIPPAGE_PERCENT) return null;
   const frac = match[2] ?? "";
-  const padded = (frac + "00").slice(0, 2);
-  const bps = BigInt(whole * 100 + Number(padded));
-  if (bps > 10000n) return null;
+  const padded = (frac + "00").slice(0, DECIMAL_PLACES);
+  const bps = BigInt(whole * SLIPPAGE_BPS_MULTIPLIER + Number(padded));
+  if (bps > MAX_SLIPPAGE_BPS) return null;
   return bps;
 };
 

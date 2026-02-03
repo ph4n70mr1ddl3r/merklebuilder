@@ -13,7 +13,6 @@ use merklebuilder::merkle::{
     ProofResult, available_layers, build_proof, ensure_db_present, to_hex32,
 };
 use serde::Serialize;
-use sha3::Keccak256;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
@@ -243,7 +242,7 @@ fn matches_not_found(err: &str) -> bool {
 mod tests {
     use super::*;
     use merklebuilder::merkle::build_proof;
-    use sha3::Digest;
+    use sha3::{Digest, Keccak256};
     use std::fs::File;
     use std::io::Write;
     use std::path::PathBuf;

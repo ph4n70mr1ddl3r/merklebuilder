@@ -6,6 +6,7 @@ import { ProofResponseSchema } from "../lib/validators";
 import { normalizeAddress, getCachedProof, setCachedProof } from "../lib/utils";
 import { DEMO_ABI } from "../lib/airdrop";
 import type { ProofResponse } from "../lib/types";
+import { logger } from "../lib/logger";
 
 export function useProof() {
     const [proof, setProof] = useState<ProofResponse | null>(null);
@@ -35,7 +36,7 @@ export function useProof() {
             if (!skipCache) {
                 const cached = getCachedProof(normalizedAddress);
                 if (cached) {
-                    console.log("Using cached proof for", normalizedAddress);
+                    logger.info("Using cached proof for", normalizedAddress);
                     setProof(cached);
                     setIsLoading(false);
                     
@@ -86,7 +87,7 @@ export function useProof() {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Failed to fetch proof";
             setError(errorMessage);
-            console.error("Proof fetch error:", err);
+            logger.error("Proof fetch error:", err);
             return null;
         } finally {
             setIsLoading(false);
@@ -129,7 +130,7 @@ async function validateProofOnChain(
 
         return Boolean(isEligible);
     } catch (error) {
-        console.error("On-chain validation error:", error);
+        logger.error("On-chain validation error:", error);
         return false;
     }
 }
