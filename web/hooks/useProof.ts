@@ -52,52 +52,60 @@ export function useProof() {
                 }
             }
 
-            // Fetch from API with timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const maxRetries = 3;
+            let lastError: Error | null = null;
 
-            try {
-                const res = await fetch(`${API_BASE}/proof/${normalizedAddress}`, {
-                    signal: controller.signal,
-                });
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const res = await fetch(`${API_BASE}/proof/${normalizedAddress}`, {
+                        signal: controller.signal,
+                    });
 
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(`Not in airdrop list (${text || res.status})`);
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(`Not in airdrop list (${text || res.status})`);
+                    }
+
+                    const rawData = await res.text();
+                    const data = JSON.parse(rawData);
+
+                    // Validate response structure
+
+                    const validatedData = ProofResponseSchema.parse(data);
+
+                    const proofAddress = normalizeAddress(validatedData.address);
+                    if (normalizedAddress !== proofAddress) {
+                        throw new Error(`Proof mismatch: expected ${normalizedAddress}, got ${proofAddress}`);
+                    }
+
+                    const isValid = await validateProofOnChain(normalizedAddress, validatedData);
+                    if (!isValid) {
+                        throw new Error("Proof validation failed on-chain");
+                    }
+
+                    setIsValidated(true);
+                    setProof(validatedData);
+                    setCachedProof(normalizedAddress, validatedData);
+                    return validatedData;
+                } catch (fetchErr) {
+                    lastError = fetchErr instanceof Error ? fetchErr : new Error(String(fetchErr));
+                    if (attempt < maxRetries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                    }
                 }
-
-                const rawData = await res.text();
-                const data = JSON.parse(rawData);
-
-            // Validate response structure
-            const validatedData = ProofResponseSchema.parse(data);
-
-            // Verify the proof is for the correct address
-            const proofAddress = normalizeAddress(validatedData.address);
-            if (normalizedAddress !== proofAddress) {
-                throw new Error(`Proof mismatch: expected ${normalizedAddress}, got ${proofAddress}`);
             }
 
-            // Validate proof on-chain
-            const isValid = await validateProofOnChain(normalizedAddress, validatedData);
-            if (!isValid) {
-                throw new Error("Proof validation failed on-chain");
-            }
-
-            setIsValidated(true);
-            setProof(validatedData);
-
-            // Cache the validated proof
-            setCachedProof(normalizedAddress, validatedData);
-
-            return validatedData;
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Failed to fetch proof";
-            if (err.name === 'AbortError') {
+            const errorMessage = lastError?.message || "Failed to fetch proof";
+            if (lastError?.name === 'AbortError') {
                 setError('Request timeout - please try again');
             } else {
                 setError(errorMessage);
             }
+            logger.error("Proof fetch error after retries:", lastError);
+            return null;
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Failed to fetch proof";
+            setError(errorMessage);
             logger.error("Proof fetch error:", err);
             return null;
         } finally {

@@ -16,8 +16,10 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function normalizeAddress(address: string | null | undefined): string | null {
   if (!address) return null;
+  const trimmed = address.trim();
+  if (!trimmed) return null;
   try {
-    return getAddress(address);
+    return getAddress(trimmed);
   } catch {
     return null;
   }

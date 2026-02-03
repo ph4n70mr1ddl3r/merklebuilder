@@ -110,15 +110,7 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Stri
 
         let is_left = path_index % 2 == 0;
         let sibling_idx = if is_left {
-            if let Some(idx) = path_index.checked_add(1) {
-                if idx < node_count {
-                    idx
-                } else {
-                    path_index
-                }
-            } else {
-                path_index
-            }
+            path_index.saturating_add(1).min(node_count - 1)
         } else {
             path_index.saturating_sub(1)
         };
@@ -195,8 +187,10 @@ pub fn layer_node_count(path: &Path) -> Result<usize, String> {
 pub fn read_node(path: &Path, index: usize) -> Result<[u8; HASH_SIZE], String> {
     let mut file =
         File::open(path).map_err(|e| format!("Unable to open {}: {e}", path.display()))?;
-    let offset = (index as u64).saturating_mul(HASH_SIZE as u64);
-    file.seek(SeekFrom::Start(offset))
+    let offset = index
+        .checked_mul(HASH_SIZE)
+        .ok_or_else(|| format!("Index {} would cause overflow", index))?;
+    file.seek(SeekFrom::Start(offset as u64))
         .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
     let mut buf = [0u8; HASH_SIZE];
     file.read_exact(&mut buf)
@@ -230,15 +224,17 @@ pub fn find_address_index(
     let mut steps = 0usize;
 
     while low < high {
-        let mid = low + (high - low) / 2;
-        file.seek(SeekFrom::Start((mid as u64) * ADDRESS_SIZE as u64))
-            .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
+        let mid = low.wrapping_add(high) / 2;
+        file.seek(SeekFrom::Start(
+            (mid as u64).saturating_mul(ADDRESS_SIZE as u64),
+        ))
+        .map_err(|e| format!("Seek failed in {}: {e}", path.display()))?;
         file.read_exact(&mut buf)
             .map_err(|e| format!("Read failed in {}: {e}", path.display()))?;
         steps = steps.saturating_add(1);
         match buf.cmp(target) {
             Ordering::Less => {
-                low = mid + 1;
+                low = mid.saturating_add(1);
             }
             Ordering::Greater => {
                 high = mid;
