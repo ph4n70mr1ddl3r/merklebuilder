@@ -69,9 +69,6 @@ export function useProof() {
                 const rawData = await res.text();
                 const data = JSON.parse(rawData);
 
-            const rawData = await res.text();
-            const data = JSON.parse(rawData);
-
             // Validate response structure
             const validatedData = ProofResponseSchema.parse(data);
 

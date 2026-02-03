@@ -16,7 +16,7 @@ use serde::Serialize;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{CorsLayer, Origin};
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 #[derive(Clone)]
@@ -176,14 +176,18 @@ async fn main() {
         layer_count,
         config.listen
     );
-    println!("CORS enabled for all origins");
+    println!("CORS enabled for localhost origins only");
 
     let state = AppState {
         db_dir: Arc::new(config.data_dir.clone()),
     };
 
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(
+            Origin::exact("http://localhost:3000".parse().unwrap())
+                .and(Origin::exact("http://127.0.0.1:3000".parse().unwrap()))
+                .and(Origin::exact("https://localhost:3000".parse().unwrap()))
+        )
         .allow_methods([Method::GET, Method::OPTIONS])
         .allow_headers(Any);
 

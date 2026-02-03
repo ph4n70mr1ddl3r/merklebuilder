@@ -162,6 +162,7 @@ contract DemoAirdrop {
         pure
         returns (bool)
     {
+        require(proof.length > 0 && proofFlags.length > 0, "DEMO: empty proof");
         bytes32 computed = leaf;
         for (uint256 i = 0; i < proof.length; ++i) {
             computed = proofFlags[i]

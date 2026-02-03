@@ -8,6 +8,8 @@ import { DEMO_ABI } from "../lib/airdrop";
 import { CONTRACT_POLL_INTERVAL } from "../lib/constants";
 import type { ContractState } from "../lib/types";
 
+type GetInvitationsResult = [string[], boolean[]];
+
 export function useContractState(account?: string) {
     const fetchContractState = useCallback(async (): Promise<ContractState | null> => {
         if (!account) return null;
@@ -55,10 +57,9 @@ export function useContractState(account?: string) {
                 }),
             ]);
 
-            const invitees =
-                (Array.isArray((slots as any)[0]) ? ((slots as any)[0] as string[]) : []) || [];
-            const used =
-                (Array.isArray((slots as any)[1]) ? ((slots as any)[1] as boolean[]) : []) || [];
+            const result = slots as GetInvitationsResult;
+            const invitees = Array.isArray(result[0]) ? result[0] : [];
+            const used = Array.isArray(result[1]) ? result[1] : [];
 
             const parsedSlots = invitees.map((inv, idx) => ({
                 invitee: inv && inv !== ZeroAddress ? inv : null,

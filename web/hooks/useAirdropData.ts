@@ -7,6 +7,8 @@ import { CONTRACT_ADDRESS, DEMO_ABI, API_BASE, ProofResponse } from '../lib/aird
 import { shorten } from '../lib/format';
 import { logger } from '../lib/logger';
 
+type GetInvitationsResult = [string[], boolean[]];
+
 export function useAirdropData(account?: string) {
     const [claimCount, setClaimCount] = useState<number | null>(null);
     const [freeClaims, setFreeClaims] = useState<number>(2);
@@ -66,8 +68,9 @@ export function useAirdropData(account?: string) {
             ]);
 
             const slotsArray = Array.isArray(slots) ? slots : [];
-            const invitees = Array.isArray(slotsArray[0]) ? (slotsArray[0] as string[]) : [];
-            const used = Array.isArray(slotsArray[1]) ? (slotsArray[1] as boolean[]) : [];
+            const result = slotsArray as GetInvitationsResult;
+            const invitees = Array.isArray(result[0]) ? result[0] : [];
+            const used = Array.isArray(result[1]) ? result[1] : [];
             const parsedSlots = invitees?.map((inv, idx) => ({
                 invitee: inv && inv !== ZeroAddress ? inv : null,
                 used: Boolean(used?.[idx]),
@@ -110,7 +113,9 @@ export function useAirdropData(account?: string) {
                     refreshOnChain(target);
                     return;
                 }
-            } catch { }
+            } catch (error) {
+                logger.warn("Failed to access localStorage cache", error);
+            }
         }
 
         setCheckingProof(true);
@@ -145,7 +150,9 @@ export function useAirdropData(account?: string) {
 
             try {
                 localStorage.setItem(`demo-proof-${normalizedTarget.toLowerCase()}`, JSON.stringify(data));
-            } catch { }
+            } catch (error) {
+                logger.warn("Failed to cache proof to localStorage", error);
+            }
 
             // Check claim status immediately after fetching proof
             try {

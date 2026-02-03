@@ -4,6 +4,10 @@ big.txt
 accounts.txt
 final.txt
 
+# Test account files (private keys - NEVER commit)
+test-accounts*.json
+*.test-accounts.json
+
 # Frontend
 web/.next
 web/node_modules

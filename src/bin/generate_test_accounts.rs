@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::process;
 
-use k256::SecretKey;
 use k256::elliptic_curve::rand_core::SeedableRng;
+use k256::SecretKey;
 use merklebuilder::ethereum_address;
 use rand_chacha::ChaCha20Rng;
 use serde::Serialize;
@@ -16,6 +16,13 @@ struct TestAccount {
 }
 
 fn main() {
+    eprintln!(
+        "⚠️  SECURITY WARNING: This tool generates test accounts with private keys in plaintext."
+    );
+    eprintln!("⚠️  NEVER use these keys for production or commit them to version control.");
+    eprintln!("⚠️  Generated files should be added to .gitignore and kept secure.");
+    eprintln!();
+
     let (count, output_path, seed) = match parse_args() {
         Ok(values) => values,
         Err(e) => {
@@ -37,6 +44,7 @@ fn main() {
 
     println!("✓ Generated {} test accounts to {}", count, output_path);
     println!("  Seed: {} (deterministic)", seed);
+    eprintln!("⚠️  Remember to add '{}' to .gitignore", output_path);
 }
 
 fn parse_args() -> Result<(usize, String, u64), String> {
