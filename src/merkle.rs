@@ -156,10 +156,6 @@ pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], String> {
         ));
     }
 
-    if cleaned.contains('\0') {
-        return Err("Invalid address: contains null byte".to_string());
-    }
-
     let mut buf = [0u8; ADDRESS_SIZE];
     hex::decode_to_slice(cleaned, &mut buf).map_err(|_| "Invalid hex in address".to_string())?;
     Ok(buf)
@@ -255,13 +251,18 @@ pub fn find_address_index(
 }
 
 #[must_use]
-pub fn to_hex32(bytes: &[u8; HASH_SIZE]) -> String {
+fn to_hex<const N: usize>(bytes: &[u8; N]) -> String {
     format!("0x{}", hex::encode(bytes))
 }
 
 #[must_use]
+pub fn to_hex32(bytes: &[u8; HASH_SIZE]) -> String {
+    to_hex(bytes)
+}
+
+#[must_use]
 pub fn to_hex20(bytes: &[u8; ADDRESS_SIZE]) -> String {
-    format!("0x{}", hex::encode(bytes))
+    to_hex(bytes)
 }
 
 /// Checks that required Merkle database files exist.

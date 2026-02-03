@@ -1,3 +1,4 @@
+use sha3::{Digest, Keccak256};
 use std::env;
 use std::fs::{create_dir_all, File};
 use std::io::{BufRead, BufReader, BufWriter, Write};
@@ -136,8 +137,6 @@ fn write_layers(
     Ok(())
 }
 
-use sha3::{Digest, Keccak256};
-
 fn hash_pair(left: &[u8; HASH_SIZE], right: &[u8; HASH_SIZE]) -> [u8; HASH_SIZE] {
     let mut hasher = Keccak256::new();
     hasher.update(left);
@@ -185,7 +184,7 @@ fn build_layers(
     while current.len() > 1 {
         let mut next = Vec::with_capacity(current.len().div_ceil(2));
         for chunk in current.chunks(2) {
-            let right = if chunk.len() == 2 { chunk[1] } else { chunk[0] };
+            let right = chunk.get(1).copied().unwrap_or(chunk[0]);
             next.push(hash_pair(&chunk[0], &right));
             done = done.saturating_add(1);
             if let Some(p) = &progress {

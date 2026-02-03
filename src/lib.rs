@@ -22,11 +22,7 @@ pub fn ethereum_address(secret_key: &SecretKey) -> String {
 
 #[must_use]
 pub fn to_checksum_address(address: &[u8]) -> String {
-    let mut hex = String::with_capacity(40);
-    for byte in address {
-        hex.push_str(&format!("{byte:02x}"));
-    }
-
+    let hex = hex::encode(address);
     let hash = Keccak256::digest(hex.as_bytes());
     let mut checksummed = String::with_capacity(42);
     checksummed.push_str("0x");

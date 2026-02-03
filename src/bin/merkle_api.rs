@@ -3,21 +3,21 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::Json;
-use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::{Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use axum::Json;
+use axum::Router;
 use merklebuilder::merkle::{
-    ProofResult, available_layers, build_proof, ensure_db_present, to_hex32,
+    available_layers, build_proof, ensure_db_present, to_hex32, ProofResult,
 };
 use serde::Serialize;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::cors::{Any, CorsLayer};
-use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 #[derive(Clone)]
 struct AppState {
@@ -186,7 +186,6 @@ async fn main() {
         .allow_origin([
             "http://localhost:3000".parse().unwrap(),
             "http://127.0.0.1:3000".parse().unwrap(),
-            "https://localhost:3000".parse().unwrap(),
         ])
         .allow_methods([Method::GET, Method::OPTIONS])
         .allow_headers(Any);
@@ -200,7 +199,9 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/proof/:address", get(proof))
-        .layer(GovernorLayer { config: std::sync::Arc::new(governor_conf) })
+        .layer(GovernorLayer {
+            config: std::sync::Arc::new(governor_conf),
+        })
         .layer(ServiceBuilder::new().layer(cors))
         .with_state(state);
 
