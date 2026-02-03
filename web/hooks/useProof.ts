@@ -163,7 +163,8 @@ async function validateProofOnChain(
 
         return Boolean(isEligible);
     } catch (error) {
-        logger.error("On-chain validation error:", error);
+        const errorDetails = error instanceof Error ? error.message : String(error);
+        logger.error("On-chain validation error:", { error: errorDetails, address });
         return false;
     }
 }

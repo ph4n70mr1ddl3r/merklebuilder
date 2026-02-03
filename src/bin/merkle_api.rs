@@ -191,7 +191,10 @@ async fn main() {
         .per_second(20)
         .burst_size(50)
         .finish()
-        .unwrap();
+        .unwrap_or_else(|| {
+            eprintln!("Failed to create rate limiter config");
+            std::process::exit(1);
+        });
 
     let app = Router::new()
         .route("/health", get(health))

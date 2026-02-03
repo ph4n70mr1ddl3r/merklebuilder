@@ -40,10 +40,12 @@ const parseSlippageBps = (value: string): bigint | null => {
   const match = trimmed.match(/^(\d{1,3})(?:\.(\d{0,2}))?$/);
   if (!match) return null;
   const whole = Number(match[1]);
-  if (whole > MAX_SLIPPAGE_PERCENT) return null;
+  if (isNaN(whole) || whole > MAX_SLIPPAGE_PERCENT) return null;
   const frac = match[2] ?? "";
   const padded = (frac + "00").slice(0, DECIMAL_PLACES);
-  const bps = BigInt(whole * SLIPPAGE_BPS_MULTIPLIER + Number(padded));
+  const fractionalValue = Number(padded);
+  if (isNaN(fractionalValue)) return null;
+  const bps = BigInt(whole * SLIPPAGE_BPS_MULTIPLIER + fractionalValue);
   if (bps > MAX_SLIPPAGE_BPS) return null;
   return bps;
 };
@@ -84,6 +86,9 @@ export default function HomePage() {
   }, [airdrop.claimCount, airdrop.freeClaims]);
 
   const normalizedSlots = useMemo(() => {
+    if (!airdrop.invitationSlots || airdrop.invitationSlots.length === 0) {
+      return Array.from({ length: airdrop.maxInvites }, () => ({ invitee: null, used: false }));
+    }
     const base = airdrop.invitationSlots.slice(0, airdrop.maxInvites);
     const missing = Math.max(0, airdrop.maxInvites - base.length);
     return [...base, ...Array.from({ length: missing }, () => ({ invitee: null, used: false }))];
@@ -113,6 +118,7 @@ export default function HomePage() {
       return;
     }
     setRecipient(account);
+    let isMounted = true;
     const init = async () => {
       if (chain?.id && chain.id !== CHAIN_ID && switchChain) {
         try {
@@ -122,10 +128,15 @@ export default function HomePage() {
           return;
         }
       }
-      await airdrop.refreshOnChain(account);
-      await airdrop.refreshProof(account);
+      if (isMounted) {
+        await airdrop.refreshOnChain(account);
+        await airdrop.refreshProof(account);
+      }
     };
     init();
+    return () => {
+      isMounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, chain, switchChain]);
 

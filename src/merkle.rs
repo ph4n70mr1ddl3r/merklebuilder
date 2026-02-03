@@ -163,12 +163,16 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Merk
 
         let is_left = path_index % 2 == 0;
         let sibling_idx = if is_left {
-            path_index
-                .checked_add(1)
-                .unwrap_or(node_count)
-                .min(node_count - 1)
+            if path_index + 1 >= node_count {
+                return Err(MerkleError::IndexOutOfBounds {
+                    level,
+                    index: path_index + 1,
+                    count: node_count,
+                });
+            }
+            path_index + 1
         } else {
-            path_index.saturating_sub(1)
+            path_index - 1
         };
 
         let sibling_hash = read_node(&layer_path, sibling_idx)?;
