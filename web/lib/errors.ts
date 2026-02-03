@@ -21,8 +21,12 @@ export type ErrorCode = keyof typeof ERROR_MESSAGES;
 /**
  * Parse Web3 error and return user-friendly message
  */
-export function parseWeb3Error(error: any): string {
-  const message = error?.message?.toLowerCase() || error?.toString()?.toLowerCase() || '';
+export function parseWeb3Error(error: Error | { message?: string } | string): string {
+  const message =
+    (error as Error)?.message?.toLowerCase() ||
+    (error as { message?: string })?.message?.toLowerCase() ||
+    String(error).toLowerCase() ||
+    '';
   
   // User rejected transaction
   if (message.includes('user rejected') || message.includes('user denied')) {

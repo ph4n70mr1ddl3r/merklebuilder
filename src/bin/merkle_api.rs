@@ -16,7 +16,7 @@ use serde::Serialize;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
-use tower_http::cors::{CorsLayer, Origin};
+use tower_http::cors::{Any, CorsLayer};
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 #[derive(Clone)]
@@ -183,11 +183,11 @@ async fn main() {
     };
 
     let cors = CorsLayer::new()
-        .allow_origin(
-            Origin::exact("http://localhost:3000".parse().unwrap())
-                .and(Origin::exact("http://127.0.0.1:3000".parse().unwrap()))
-                .and(Origin::exact("https://localhost:3000".parse().unwrap()))
-        )
+        .allow_origin([
+            "http://localhost:3000".parse().unwrap(),
+            "http://127.0.0.1:3000".parse().unwrap(),
+            "https://localhost:3000".parse().unwrap(),
+        ])
         .allow_methods([Method::GET, Method::OPTIONS])
         .allow_headers(Any);
 

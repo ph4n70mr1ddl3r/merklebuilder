@@ -3,10 +3,10 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::process;
 
-use indicatif::{ProgressBar, ProgressStyle};
-use k256::SecretKey;
 use k256::elliptic_curve::rand_core::OsRng;
+use k256::SecretKey;
 use merklebuilder::ethereum_address;
+use merklebuilder::progress::{build_progress, progress_update_interval};
 
 fn main() {
     let (count, output_path) = match parse_args() {
@@ -76,21 +76,4 @@ fn write_addresses(count: usize, output_path: &str) -> Result<(), Box<dyn std::e
     progress.finish_and_clear();
     println!("Wrote {count} addresses to {output_path}");
     Ok(())
-}
-
-fn progress_update_interval(count: usize) -> usize {
-    // Update roughly every 1% but not more frequently than every 1,000 items.
-    let one_percent = (count / 100).max(1);
-    one_percent.clamp(1_000, usize::MAX)
-}
-
-fn build_progress(len: u64) -> ProgressBar {
-    let bar = ProgressBar::new(len);
-    let style = ProgressStyle::with_template(
-        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({percent}%)",
-    )
-    .unwrap_or_else(|_| ProgressStyle::default_bar())
-    .progress_chars("#>- ");
-    bar.set_style(style);
-    bar
 }

@@ -19,7 +19,8 @@ fn main() {
         }
     };
 
-    let db_dir = Path::new("merkledb");
+    let db_dir = std::env::var("MERKLE_DB_DIR").unwrap_or_else(|_| "merkledb".to_string());
+    let db_dir = Path::new(&db_dir);
     match build_proof(db_dir, &address_str) {
         Ok(proof) => {
             println!("Address: {}", proof.normalized_address);

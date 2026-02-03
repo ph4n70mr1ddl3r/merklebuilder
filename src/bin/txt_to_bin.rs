@@ -4,9 +4,8 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 
-use indicatif::{ProgressBar, ProgressStyle};
-
 use merklebuilder::merkle::{hash_leaf, parse_address};
+use merklebuilder::progress::{build_progress, progress_update_interval};
 use merklebuilder::{ADDRESS_SIZE, HASH_SIZE};
 
 fn main() {
@@ -121,7 +120,10 @@ fn write_addresses(
     Ok(())
 }
 
-fn write_layers(dir: &Path, layers: &[Vec<[u8; HASH_SIZE]>]) -> Result<(), Box<dyn std::error::Error>> {
+fn write_layers(
+    dir: &Path,
+    layers: &[Vec<[u8; HASH_SIZE]>],
+) -> Result<(), Box<dyn std::error::Error>> {
     for (idx, layer) in layers.iter().enumerate() {
         let filename = format!("layer{idx:02}.bin");
         let path = dir.join(filename);
@@ -186,10 +188,10 @@ fn build_layers(
             let right = if chunk.len() == 2 { chunk[1] } else { chunk[0] };
             next.push(hash_pair(&chunk[0], &right));
             done = done.saturating_add(1);
-            if let Some(ref p) = progress
-                && (done.is_multiple_of(update_every) || done == total_hashes)
-            {
-                p.set_position(done as u64);
+            if let Some(p) = &progress {
+                if done.is_multiple_of(update_every) || done == total_hashes {
+                    p.set_position(done as u64);
+                }
             }
         }
         layers.push(std::mem::take(&mut current));
@@ -224,23 +226,4 @@ fn count_non_empty_lines(path: &str) -> Result<usize, Box<dyn std::error::Error>
         }
     }
     Ok(count)
-}
-
-#[must_use]
-fn build_progress(len: u64) -> ProgressBar {
-    let bar = ProgressBar::new(len);
-    let style = ProgressStyle::with_template(
-        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({percent}%)",
-    )
-    .unwrap_or_else(|_| ProgressStyle::default_bar())
-    .progress_chars("#>- ");
-    bar.set_style(style);
-    bar
-}
-
-fn progress_update_interval(count: usize) -> usize {
-    // Update roughly every 1% but not more frequently than every 100 items.
-    // This allows progress for smaller datasets while not spamming on large ones.
-    let one_percent = (count / 100).max(1);
-    one_percent.clamp(100, usize::MAX)
 }

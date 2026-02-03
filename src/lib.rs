@@ -3,6 +3,7 @@ use k256::SecretKey;
 use sha3::{Digest, Keccak256};
 
 pub mod merkle;
+pub mod progress;
 
 pub const ADDRESS_SIZE: usize = 20;
 pub const HASH_SIZE: usize = 32;
