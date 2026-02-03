@@ -55,7 +55,6 @@ pub struct ProofResult {
 /// or if the layer files are missing or corrupted.
 pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, String> {
     let address = parse_address(address_str)?;
-    let db_dir = db_dir.to_path_buf();
     let addresses_path = db_dir.join("addresses.bin");
     let (index, steps, total) =
         find_address_index(&addresses_path, &address)?.ok_or_else(|| {

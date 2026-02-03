@@ -176,23 +176,20 @@ async fn main() {
         layer_count,
         config.listen
     );
-    println!("CORS enabled for localhost origins only");
+    println!("CORS enabled for all origins (rate limited)");
 
     let state = AppState {
         db_dir: Arc::new(config.data_dir.clone()),
     };
 
     let cors = CorsLayer::new()
-        .allow_origin([
-            "http://localhost:3000".parse().unwrap(),
-            "http://127.0.0.1:3000".parse().unwrap(),
-        ])
+        .allow_origin(Any)
         .allow_methods([Method::GET, Method::OPTIONS])
         .allow_headers(Any);
 
     let governor_conf = GovernorConfigBuilder::default()
-        .per_second(10)
-        .burst_size(30)
+        .per_second(20)
+        .burst_size(50)
         .finish()
         .unwrap();
 
