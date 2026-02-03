@@ -31,6 +31,9 @@ export function useProof() {
         setProof(null);
         setIsValidated(false);
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         try {
             // Check cache first
             if (!skipCache) {
@@ -39,7 +42,9 @@ export function useProof() {
                     logger.info("Using cached proof for", normalizedAddress);
                     setProof(cached);
                     setIsLoading(false);
-                    
+
+                    clearTimeout(timeoutId);
+
                     // Validate cached proof in background
                     validateProofOnChain(normalizedAddress, cached).then((valid) => {
                         setIsValidated(valid);
@@ -47,7 +52,7 @@ export function useProof() {
                             setError("Cached proof validation failed - please retry");
                         }
                     });
-                    
+
                     return cached;
                 }
             }
