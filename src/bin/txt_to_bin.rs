@@ -211,6 +211,7 @@ fn build_layers(
     Ok(layers)
 }
 
+#[must_use]
 fn total_hash_ops(mut count: usize) -> usize {
     let mut total = 0usize;
     while count > 1 {

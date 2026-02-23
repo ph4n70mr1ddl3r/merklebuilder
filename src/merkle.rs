@@ -232,7 +232,6 @@ pub fn hash_leaf(address: &[u8; ADDRESS_SIZE]) -> [u8; HASH_SIZE] {
     hasher.finalize().into()
 }
 
-#[must_use]
 pub fn layer_node_count(path: &Path) -> Result<usize, MerkleError> {
     let len = File::open(path)
         .and_then(|f| f.metadata())
@@ -247,7 +246,6 @@ pub fn layer_node_count(path: &Path) -> Result<usize, MerkleError> {
     Ok((len / HASH_SIZE as u64) as usize)
 }
 
-#[must_use]
 pub fn read_node(path: &Path, index: usize) -> Result<[u8; HASH_SIZE], MerkleError> {
     let mut file = File::open(path)
         .map_err(|e| MerkleError::FileIo(format!("Unable to open {}: {e}", path.display())))?;

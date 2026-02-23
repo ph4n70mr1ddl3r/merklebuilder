@@ -1,5 +1,6 @@
 use indicatif::{ProgressBar, ProgressStyle};
 
+#[must_use]
 pub fn build_progress(len: u64) -> ProgressBar {
     let bar = ProgressBar::new(len);
     let style = ProgressStyle::with_template(
@@ -11,6 +12,7 @@ pub fn build_progress(len: u64) -> ProgressBar {
     bar
 }
 
+#[must_use]
 pub fn progress_update_interval(count: usize) -> usize {
     if count < 1_000 {
         return count.max(1);
