@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { getAddress, ZeroAddress } from 'ethers';
 import { toast } from 'sonner';
 import { readContract } from 'wagmi/actions';
@@ -6,8 +6,36 @@ import { wagmiConfig } from '../lib/wagmi';
 import { CONTRACT_ADDRESS, DEMO_ABI, API_BASE, ProofResponse } from '../lib/airdrop';
 import { shorten } from '../lib/format';
 import { logger } from '../lib/logger';
+import { getCachedProof, setCachedProof, normalizeAddress } from '../lib/utils';
+import { ProofResponseSchema } from '../lib/validators';
 
 type GetInvitationsResult = [string[], boolean[]];
+const API_TIMEOUT_MS = 10000;
+
+async function validateProofOnChain(address: string, proof: ProofResponse): Promise<boolean> {
+    try {
+        const isValidHashFormat = /^0x[a-fA-F0-9]{64}$/.test(proof.leaf) &&
+            proof.proof.every(p => /^0x[a-fA-F0-9]{64}$/.test(p.hash));
+        if (!isValidHashFormat) {
+            return false;
+        }
+
+        const proofHashes = proof.proof.map((p) => p.hash as `0x${string}`);
+        const proofFlags = proof.proof_flags;
+
+        const isEligible = await readContract(wagmiConfig, {
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            abi: DEMO_ABI,
+            functionName: "isEligible",
+            args: [address as `0x${string}`, proofHashes, proofFlags],
+        });
+
+        return Boolean(isEligible);
+    } catch (error) {
+        logger.error("On-chain validation error:", { error, address });
+        return false;
+    }
+}
 
 export function useAirdropData(account?: string) {
     const [claimCount, setClaimCount] = useState<number | null>(null);
@@ -20,6 +48,14 @@ export function useAirdropData(account?: string) {
     const [proof, setProof] = useState<ProofResponse | null>(null);
     const [checkingProof, setCheckingProof] = useState(false);
     const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const refreshOnChain = useCallback(async (addr?: string) => {
         const target = addr ?? account;
@@ -67,6 +103,8 @@ export function useAirdropData(account?: string) {
                 }),
             ]);
 
+            if (!isMountedRef.current) return;
+
             const slotsArray = Array.isArray(slots) ? slots : [];
             const result = slotsArray as GetInvitationsResult;
             const invitees = Array.isArray(result[0]) ? result[0] : [];
@@ -85,7 +123,9 @@ export function useAirdropData(account?: string) {
             setInvitationSlots(parsedSlots);
         } catch (err) {
             logger.error("Failed to read on-chain state", err);
-            toast.error("Failed to refresh chain data");
+            if (isMountedRef.current) {
+                toast.error("Failed to refresh chain data");
+            }
         }
     }, [account]);
 
@@ -96,85 +136,104 @@ export function useAirdropData(account?: string) {
             return;
         }
 
+        const normalizedTarget = normalizeAddress(target);
+        if (!normalizedTarget) {
+            toast.error("Invalid address format");
+            return;
+        }
+
         if (!skipCache) {
-            try {
-                const cached = localStorage.getItem(`demo-proof-${getAddress(target).toLowerCase()}`);
-                if (cached) {
-                    const data = JSON.parse(cached);
-                    // Handle null cache (not eligible)
-                    if (data === null) {
-                        setProof(null);
+            const cached = getCachedProof(normalizedTarget);
+            if (cached) {
+                try {
+                    const isValid = await validateProofOnChain(normalizedTarget, cached);
+                    if (!isMountedRef.current) return;
+                    
+                    if (isValid) {
+                        setProof(cached);
                         setHasCheckedEligibility(true);
+                        toast.success("Loaded cached eligibility data");
+                        refreshOnChain(target);
                         return;
+                    } else {
+                        logger.warn("Cached proof failed validation, fetching fresh");
                     }
-                    setProof(data);
-                    setHasCheckedEligibility(true);
-                    toast.success("Loaded cached eligibility data");
-                    refreshOnChain(target);
-                    return;
+                } catch (error) {
+                    logger.warn("Failed to validate cached proof", error);
                 }
-            } catch (error) {
-                logger.warn("Failed to access localStorage cache", error);
             }
         }
 
+        if (!isMountedRef.current) return;
         setCheckingProof(true);
         setProof(null);
         setHasCheckedEligibility(false);
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
         try {
-            const res = await fetch(`${API_BASE}/proof/${target}`);
+            const res = await fetch(`${API_BASE}/proof/${target}`, {
+                signal: controller.signal,
+            });
+            
+            if (!isMountedRef.current) return;
+            
             if (!res.ok) {
                 toast.error(`Not eligible for airdrop`);
                 setProof(null);
                 setHasCheckedEligibility(true);
-                try {
-                    localStorage.setItem(`demo-proof-${getAddress(target).toLowerCase()}`, JSON.stringify(null));
-                } catch { }
                 return;
             }
 
-            const data: ProofResponse = await res.json();
-            const normalizedTarget = getAddress(target);
-            const proofAddress = getAddress(data.address);
+            const rawData = await res.text();
+            const data = JSON.parse(rawData);
+            const validatedData = ProofResponseSchema.parse(data);
 
+            const proofAddress = normalizeAddress(validatedData.address);
             if (normalizedTarget !== proofAddress) {
-                toast.error(`Proof is for ${shorten(proofAddress)}. Connect that wallet to claim.`);
+                toast.error(`Proof is for ${shorten(proofAddress ?? '')}. Connect that wallet to claim.`);
                 setProof(null);
                 setHasCheckedEligibility(true);
                 return;
             }
 
-            setProof(data);
-            setHasCheckedEligibility(true);
-
-            try {
-                localStorage.setItem(`demo-proof-${normalizedTarget.toLowerCase()}`, JSON.stringify(data));
-            } catch (error) {
-                logger.warn("Failed to cache proof to localStorage", error);
+            const isValid = await validateProofOnChain(normalizedTarget, validatedData);
+            if (!isMountedRef.current) return;
+            
+            if (!isValid) {
+                toast.error("Proof validation failed on-chain");
+                setProof(null);
+                setHasCheckedEligibility(true);
+                return;
             }
 
-            // Check claim status immediately after fetching proof
-            try {
-            const [claimedOnChain, inviterOnChain] = await Promise.all([
-                readContract(wagmiConfig, {
-                    address: CONTRACT_ADDRESS as `0x${string}`,
-                    abi: DEMO_ABI,
-                    functionName: "hasClaimed",
-                    args: [target as `0x${string}`],
-                }),
-                readContract(wagmiConfig, {
-                    address: CONTRACT_ADDRESS as `0x${string}`,
-                    abi: DEMO_ABI,
-                    functionName: "invitedBy",
-                    args: [target as `0x${string}`],
-                }),
-            ]);
+            setProof(validatedData);
+            setHasCheckedEligibility(true);
+            setCachedProof(normalizedTarget, validatedData);
 
-            const claimed = Boolean(claimedOnChain);
-            setHasClaimed(claimed);
-            const inviterAddr = inviterOnChain === ZeroAddress ? null : inviterOnChain;
-            setInvitedBy(inviterAddr);
+            try {
+                const [claimedOnChain, inviterOnChain] = await Promise.all([
+                    readContract(wagmiConfig, {
+                        address: CONTRACT_ADDRESS as `0x${string}`,
+                        abi: DEMO_ABI,
+                        functionName: "hasClaimed",
+                        args: [target as `0x${string}`],
+                    }),
+                    readContract(wagmiConfig, {
+                        address: CONTRACT_ADDRESS as `0x${string}`,
+                        abi: DEMO_ABI,
+                        functionName: "invitedBy",
+                        args: [target as `0x${string}`],
+                    }),
+                ]);
+
+                if (!isMountedRef.current) return;
+
+                const claimed = Boolean(claimedOnChain);
+                setHasClaimed(claimed);
+                const inviterAddr = inviterOnChain === ZeroAddress ? null : inviterOnChain;
+                setInvitedBy(inviterAddr);
 
                 if (claimed) {
                     toast.success("You've already claimed your tokens!");
@@ -186,10 +245,18 @@ export function useAirdropData(account?: string) {
             }
 
         } catch (err) {
-            logger.error("Failed to fetch proof", err);
-            toast.error("Failed to fetch proof.");
+            if (!isMountedRef.current) return;
+            if (err instanceof Error && err.name === 'AbortError') {
+                toast.error("Request timeout - please try again");
+            } else {
+                logger.error("Failed to fetch proof", err);
+                toast.error("Failed to fetch proof.");
+            }
         } finally {
-            setCheckingProof(false);
+            clearTimeout(timeoutId);
+            if (isMountedRef.current) {
+                setCheckingProof(false);
+            }
         }
     }, [account, refreshOnChain]);
 

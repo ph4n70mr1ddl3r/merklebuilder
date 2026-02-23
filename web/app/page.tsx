@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ZeroAddress, getAddress, isAddress } from "ethers";
 import { parseEther, formatEther } from "viem";
 import { toast } from "sonner";
@@ -74,6 +74,7 @@ export default function HomePage() {
   const [slippage, setSlippage] = useState("1.0");
   const [trading, setTrading] = useState(false);
   const [userIntent, setUserIntent] = useState<UserIntent>('claim');
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Derived state
   const invitesRequired = airdrop.claimCount !== null ? airdrop.claimCount >= airdrop.freeClaims : false;
@@ -118,7 +119,7 @@ export default function HomePage() {
       return;
     }
     setRecipient(account);
-    let isMounted = true;
+    const isMountedRef = { current: true };
     const init = async () => {
       if (chain?.id && chain.id !== CHAIN_ID && switchChain) {
         try {
@@ -128,17 +129,17 @@ export default function HomePage() {
           return;
         }
       }
-      if (isMounted) {
-        await airdrop.refreshOnChain(account);
-        await airdrop.refreshProof(account);
-      }
+      if (!isMountedRef.current) return;
+      await airdrop.refreshOnChain(account);
+      if (!isMountedRef.current) return;
+      await airdrop.refreshProof(account);
     };
     init();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account, chain, switchChain]);
+  }, [account, chain, switchChain, airdrop.refreshOnChain, airdrop.refreshProof]);
+  // airdrop object changes on every render but the refresh functions are stable via useCallback
 
   // Persist slippage
   useEffect(() => {
@@ -159,6 +160,14 @@ export default function HomePage() {
       console.warn("Failed to write slippage to localStorage:", err);
     }
   }, [slippage]);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const connectWallet = async (connectorId?: string) => {
     const connector = connectors.find((c) => c.id === connectorId) ?? connectors.find((c) => c.ready) ?? connectors[0];
@@ -542,7 +551,10 @@ export default function HomePage() {
     try {
       await navigator.clipboard?.writeText(value);
       setCopiedKey(key);
-      setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 3000);
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current);
+      }
+      copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 3000);
     } catch (err) {
       console.warn("Failed to copy to clipboard:", err);
     }
@@ -556,7 +568,10 @@ export default function HomePage() {
       await navigator.clipboard?.writeText(inviteUrl);
       toast.success("Invite link copied!");
       setCopiedKey("invite-link");
-      setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), 3000);
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current);
+      }
+      copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), 3000);
     } catch (err) {
       console.warn("Failed to copy invite link:", err);
       toast.error("Failed to copy link");

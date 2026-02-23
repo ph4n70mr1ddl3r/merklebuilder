@@ -73,8 +73,8 @@ export function parseWeb3Error(error: Error | { message?: string } | string): st
     return ERROR_MESSAGES.POOL_NOT_FUNDED;
   }
   
-  // Fallback to original message if we can't parse it
-  return error?.message || error?.toString() || 'Transaction failed. Please try again.';
+  // Fallback to generic message to avoid leaking implementation details
+  return 'Transaction failed. Please try again.';
 }
 
 /**

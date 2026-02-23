@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePublicClient } from 'wagmi';
 import { readContract } from 'wagmi/actions';
 import { wagmiConfig } from '../lib/wagmi';
@@ -11,12 +11,20 @@ export function useMarketData(account?: string) {
     const [demoBalance, setDemoBalance] = useState<bigint>(0n);
     const [ethBalance, setEthBalance] = useState<bigint>(0n);
     const publicClient = usePublicClient();
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const refreshReserves = useCallback(
         async (addr?: string) => {
             const target = addr ?? account;
             try {
-                const [reserves, demoBal, ethBal] = await Promise.all([
+                const [reservesResult, demoBalResult, ethBalResult] = await Promise.allSettled([
                     readContract(wagmiConfig, {
                         address: CONTRACT_ADDRESS as `0x${string}`,
                         abi: DEMO_ABI,
@@ -35,15 +43,22 @@ export function useMarketData(account?: string) {
                         : Promise.resolve(0n),
                 ]);
 
-                const tuple = reserves as readonly [bigint, bigint];
-                setReserveEth(BigInt(tuple[0]));
-                setReserveDemo(BigInt(tuple[1]));
+                if (!isMountedRef.current) return;
 
-                if (typeof demoBal === "bigint") {
-                    setDemoBalance(demoBal);
+                if (reservesResult.status === 'fulfilled') {
+                    const tuple = reservesResult.value as readonly [bigint, bigint];
+                    setReserveEth(BigInt(tuple[0]));
+                    setReserveDemo(BigInt(tuple[1]));
+                } else {
+                    logger.error("Failed to fetch reserves", reservesResult.reason);
                 }
-                if (typeof ethBal === "bigint") {
-                    setEthBalance(ethBal);
+
+                if (demoBalResult.status === 'fulfilled' && typeof demoBalResult.value === "bigint") {
+                    setDemoBalance(demoBalResult.value);
+                }
+
+                if (ethBalResult.status === 'fulfilled' && typeof ethBalResult.value === "bigint") {
+                    setEthBalance(ethBalResult.value);
                 }
             } catch (err) {
                 logger.error("Failed to refresh reserves", err);
@@ -52,7 +67,6 @@ export function useMarketData(account?: string) {
         [account, publicClient]
     );
 
-    // Auto-refresh every 15s
     useEffect(() => {
         refreshReserves(account);
         const interval = setInterval(() => {

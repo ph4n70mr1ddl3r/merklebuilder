@@ -24,7 +24,7 @@ export const addressSchema = z
 
 export const amountSchema = z
     .string()
-    .regex(/^\d+\.?\d*$/, "Invalid number format")
+    .regex(/^(?:0\.\d+|[1-9]\d*(?:\.\d+)?)$/, "Invalid number format")
     .refine((val) => {
         const num = parseFloat(val);
         return num > 0;
