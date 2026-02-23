@@ -157,23 +157,20 @@ fn hash_pair(left: &[u8; HASH_SIZE], right: &[u8; HASH_SIZE]) -> [u8; HASH_SIZE]
 /// # Errors
 /// Returns an error if leaf set is empty.
 fn build_layers(
-    mut current: Vec<[u8; HASH_SIZE]>,
+    leaves: Vec<[u8; HASH_SIZE]>,
 ) -> Result<Vec<Vec<[u8; HASH_SIZE]>>, Box<dyn std::error::Error>> {
-    if current.is_empty() {
+    if leaves.is_empty() {
         return Err("Cannot build tree from empty leaf set".into());
     }
 
-    let mut layers = Vec::new();
-    layers.push(current.clone());
+    let mut layers = vec![leaves];
 
-    // Single leaf becomes its own root
-    if current.len() == 1 {
+    if layers[0].len() == 1 {
         return Ok(layers);
     }
 
-    let total_hashes = total_hash_ops(current.len());
+    let total_hashes = total_hash_ops(layers[0].len());
 
-    // Only show progress bar for larger datasets
     let show_progress = total_hashes >= 100;
     let progress = if show_progress {
         Some(build_progress(total_hashes as u64))
@@ -184,12 +181,13 @@ fn build_layers(
     let update_every = if show_progress {
         progress_update_interval(total_hashes)
     } else {
-        usize::MAX // Never update
+        usize::MAX
     };
 
     let mut done = 0usize;
 
-    while current.len() > 1 {
+    while layers.last().map_or(false, |l| l.len() > 1) {
+        let current = layers.last().unwrap();
         let mut next = Vec::with_capacity(current.len().div_ceil(2));
         for chunk in current.chunks(2) {
             let right = chunk.get(1).copied().unwrap_or(chunk[0]);
@@ -201,8 +199,7 @@ fn build_layers(
                 }
             }
         }
-        layers.push(std::mem::take(&mut current));
-        current = next;
+        layers.push(next);
     }
 
     if let Some(p) = progress {

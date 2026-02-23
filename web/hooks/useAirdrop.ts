@@ -7,6 +7,12 @@ import {
     ProofResponse,
 } from "../lib/airdrop";
 
+function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (typeof err === "string") return err;
+    return "An unknown error occurred";
+}
+
 export type InvitationSlot = {
     invitee: string | null;
     used: boolean;
@@ -84,9 +90,9 @@ export function useAirdrop(provider: BrowserProvider | null, account: string | n
                 invitesCreated: Number(created),
                 invitationSlots: parsedSlots,
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err?.message || "Failed to refresh state");
+            setError(getErrorMessage(err));
         }
     }, [provider, account, getContract]);
 
@@ -108,9 +114,9 @@ export function useAirdrop(provider: BrowserProvider | null, account: string | n
                 throw new Error("Proof address mismatch");
             }
             setProof(data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err?.message || "Failed to fetch proof");
+            setError(getErrorMessage(err));
             setProof(null);
         } finally {
             setLoading(false);
@@ -133,9 +139,9 @@ export function useAirdrop(provider: BrowserProvider | null, account: string | n
             await tx.wait();
             await refreshState();
             return tx;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err?.message || "Claim failed");
+            setError(getErrorMessage(err));
             throw err;
         } finally {
             setLoading(false);
@@ -154,9 +160,9 @@ export function useAirdrop(provider: BrowserProvider | null, account: string | n
             await tx.wait();
             await refreshState();
             return tx;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err?.message || "Invite failed");
+            setError(getErrorMessage(err));
             throw err;
         } finally {
             setLoading(false);
@@ -175,9 +181,9 @@ export function useAirdrop(provider: BrowserProvider | null, account: string | n
             await tx.wait();
             await refreshState();
             return tx;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err?.message || "Revoke failed");
+            setError(getErrorMessage(err));
             throw err;
         } finally {
             setLoading(false);

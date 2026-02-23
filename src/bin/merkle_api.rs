@@ -15,7 +15,7 @@ use merklebuilder::merkle::{
 use serde::Serialize;
 use thiserror::Error;
 use tokio::net::TcpListener;
-use tower::ServiceBuilder;
+use tokio::signal;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -199,10 +199,10 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/proof/:address", get(proof))
+        .layer(cors)
         .layer(GovernorLayer {
             config: std::sync::Arc::new(governor_conf),
         })
-        .layer(ServiceBuilder::new().layer(cors))
         .with_state(state);
 
     let listener = match TcpListener::bind(config.listen).await {
@@ -213,7 +213,12 @@ async fn main() {
         }
     };
 
-    if let Err(e) = axum::serve(listener, app).await {
+    let shutdown = async {
+        let _ = signal::ctrl_c().await;
+        println!("\nShutting down gracefully...");
+    };
+
+    if let Err(e) = axum::serve(listener, app).with_graceful_shutdown(shutdown).await {
         eprintln!("Server error: {e}");
         std::process::exit(1);
     }
