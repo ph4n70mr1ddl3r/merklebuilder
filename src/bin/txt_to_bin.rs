@@ -186,8 +186,10 @@ fn build_layers(
 
     let mut done = 0usize;
 
-    while layers.last().is_some_and(|l| l.len() > 1) {
-        let current = layers.last().unwrap();
+    while let Some(current) = layers.last() {
+        if current.len() <= 1 {
+            break;
+        }
         let mut next = Vec::with_capacity(current.len().div_ceil(2));
         for chunk in current.chunks(2) {
             let right = chunk.get(1).copied().unwrap_or(chunk[0]);

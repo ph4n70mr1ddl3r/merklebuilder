@@ -188,7 +188,16 @@ async fn main() {
     let allowed_origins: Vec<HeaderValue> = env::var("ALLOWED_ORIGINS")
         .unwrap_or_else(|_| "http://localhost:3000".to_string())
         .split(',')
-        .filter_map(|s| s.trim().parse().ok())
+        .filter_map(|s| {
+            let trimmed = s.trim();
+            match trimmed.parse() {
+                Ok(v) => Some(v),
+                Err(_) => {
+                    eprintln!("Warning: Invalid CORS origin '{trimmed}', skipping");
+                    None
+                }
+            }
+        })
         .collect();
 
     let cors = CorsLayer::new()
