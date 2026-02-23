@@ -402,7 +402,7 @@ export default function HomePage() {
   const handleBuyExactDemo = async (demoAmount: bigint, maxEthIn: bigint) => {
     if (!account) return;
     if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch { toast.error(`Switch to ${CHAIN_NAME}`); return; }
+      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
     try {
       setTrading(true);
@@ -437,7 +437,7 @@ export default function HomePage() {
   const handleSellExactDemo = async (demoAmount: bigint, minEthOut: bigint) => {
     if (!account) return;
     if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { console.error(err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
+      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
     try {
       setTrading(true);
@@ -471,7 +471,7 @@ export default function HomePage() {
   const handleSpendExactEth = async (ethAmount: bigint, minDemoOut: bigint) => {
     if (!account) return;
     if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { console.error(err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
+      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
     try {
       setTrading(true);
@@ -506,7 +506,7 @@ export default function HomePage() {
   const handleReceiveExactEth = async (demoAmount: bigint, exactEthOut: bigint) => {
     if (!account) return;
     if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { console.error(err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
+      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
     const effectiveSlippageBps = slippageBps ?? 100n;
     try {

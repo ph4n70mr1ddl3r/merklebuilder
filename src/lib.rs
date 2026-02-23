@@ -16,11 +16,11 @@ pub fn ethereum_address(secret_key: &SecretKey) -> String {
     let encoded = public_key.to_encoded_point(false);
     let public_bytes = encoded.as_bytes();
 
-    if public_bytes.len() < 65 {
+    if public_bytes.len() != 65 {
         return String::new();
     }
 
-    let hash = Keccak256::digest(&public_bytes[1..65]);
+    let hash = Keccak256::digest(&public_bytes[1..]);
     let address_bytes = &hash[hash.len() - 20..];
     to_checksum_address(address_bytes)
 }
