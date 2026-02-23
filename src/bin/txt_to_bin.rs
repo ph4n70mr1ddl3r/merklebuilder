@@ -186,7 +186,7 @@ fn build_layers(
 
     let mut done = 0usize;
 
-    while layers.last().map_or(false, |l| l.len() > 1) {
+    while layers.last().is_some_and(|l| l.len() > 1) {
         let current = layers.last().unwrap();
         let mut next = Vec::with_capacity(current.len().div_ceil(2));
         for chunk in current.chunks(2) {

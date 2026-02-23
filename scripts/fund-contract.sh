@@ -1,26 +1,29 @@
 #!/bin/bash
 # Fund the DemoAirdrop contract on Sepolia with ETH
 
-CONTRACT_ADDRESS="0x79A01fbb895fd9d821BC1123339f8887B07D9458"
+CONTRACT_ADDRESS="${CONTRACT_ADDRESS:-0x79A01fbb895fd9d821BC1123339f8887B07D9458}"
 RPC_URL="https://1rpc.io/sepolia"
 
 # Check if amount is provided
 if [ -z "$1" ]; then
-    echo "Usage: ./scripts/fund-contract.sh <amount_in_eth> [private_key]"
+    echo "Usage: ./scripts/fund-contract.sh <amount_in_eth>"
     echo "Example: ./scripts/fund-contract.sh 0.1"
     echo ""
-    echo "If private_key is not provided, you'll be prompted to enter it securely."
+    echo "Set PRIVATE_KEY environment variable or you'll be prompted to enter it securely."
     exit 1
 fi
 
 AMOUNT="$1"
 
-# Get private key
-if [ -z "$2" ]; then
+# Get private key - prefer environment variable for security
+if [ -n "$PRIVATE_KEY" ]; then
+    echo "Using PRIVATE_KEY from environment variable"
+elif [ -t 0 ]; then
     echo "Enter your private key (it won't be displayed):"
     read -s PRIVATE_KEY
 else
-    PRIVATE_KEY="$2"
+    echo "Error: PRIVATE_KEY must be set via environment variable when not running interactively"
+    exit 1
 fi
 
 echo ""

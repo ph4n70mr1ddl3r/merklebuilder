@@ -61,22 +61,21 @@ export function useProof() {
             if (!skipCache) {
                 const cached = getCachedProof(normalizedAddress);
                 if (cached) {
-                    logger.info("Using cached proof for", normalizedAddress);
-                    if (isMountedRef.current) {
-                        setProof(cached);
-                        setIsLoading(false);
+                    logger.info("Validating cached proof for", normalizedAddress);
+                    const isValid = await validateProofOnChain(normalizedAddress, cached);
+                    
+                    if (!isMountedRef.current) {
+                        return null;
                     }
 
-                    validateProofOnChain(normalizedAddress, cached).then((valid) => {
-                        if (isMountedRef.current) {
-                            setIsValidated(valid);
-                            if (!valid) {
-                                setError("Cached proof validation failed - please retry");
-                            }
-                        }
-                    });
-
-                    return cached;
+                    if (isValid) {
+                        setProof(cached);
+                        setIsValidated(true);
+                        setIsLoading(false);
+                        return cached;
+                    }
+                    
+                    logger.warn("Cached proof validation failed, fetching fresh proof");
                 }
             }
 

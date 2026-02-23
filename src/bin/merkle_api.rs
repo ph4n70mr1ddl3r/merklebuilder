@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
-use axum::http::{Method, StatusCode};
+use axum::http::{HeaderValue, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Json;
@@ -17,7 +17,7 @@ use thiserror::Error;
 use tokio::net::TcpListener;
 use tokio::signal;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 #[derive(Clone)]
 struct AppState {
@@ -176,16 +176,25 @@ async fn main() {
         layer_count,
         config.listen
     );
-    println!("CORS enabled for all origins (rate limited)");
+    println!(
+        "CORS enabled for origins: {}",
+        env::var("ALLOWED_ORIGINS").unwrap_or_else(|_| "http://localhost:3000".to_string())
+    );
 
     let state = AppState {
         db_dir: Arc::new(config.data_dir.clone()),
     };
 
+    let allowed_origins: Vec<HeaderValue> = env::var("ALLOWED_ORIGINS")
+        .unwrap_or_else(|_| "http://localhost:3000".to_string())
+        .split(',')
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_methods([Method::GET, Method::OPTIONS])
-        .allow_headers(Any);
+        .allow_headers(tower_http::cors::Any);
 
     let governor_conf = GovernorConfigBuilder::default()
         .per_second(20)

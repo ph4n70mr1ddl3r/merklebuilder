@@ -22,6 +22,7 @@ import { formatToken, shorten } from "../lib/format";
 import { addressSchema } from "../lib/validators";
 import { useAirdropData } from "../hooks/useAirdropData";
 import { useMarketData } from "../hooks/useMarketData";
+import { logger } from "../lib/logger";
 
 const MAX_SLIPPAGE_PERCENT = 100;
 const SLIPPAGE_BPS_MULTIPLIER = 100;
@@ -119,7 +120,7 @@ export default function HomePage() {
         try {
           await switchChain({ chainId: CHAIN_ID });
         } catch (err) {
-          console.error("Failed to switch chain:", err);
+          logger.error("Failed to switch chain:", err);
           return;
         }
       }
@@ -176,7 +177,7 @@ export default function HomePage() {
       setShowProviderModal(false);
       toast.success("Wallet connected successfully!", { id: toastId });
     } catch (err) {
-      console.error(err);
+      logger.error("Wallet connection error:", err);
       const message = err instanceof Error ? err.message : "Unable to connect wallet.";
       toast.error(message);
     }
@@ -254,7 +255,7 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
       await market.refreshReserves(account);
     } catch (err) {
-      console.error(err);
+      logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
       setClaimError(friendlyError);
       toast.error(
@@ -316,7 +317,7 @@ export default function HomePage() {
       try {
         await switchChain({ chainId: CHAIN_ID });
       } catch (err) {
-        console.error("Failed to switch chain:", err);
+        logger.error("Failed to switch chain:", err);
         return;
       }
     }
@@ -339,7 +340,7 @@ export default function HomePage() {
       setInvitee("");
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      console.error(err);
+      logger.error("Invitation error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -384,7 +385,7 @@ export default function HomePage() {
       toast.success("Invitation revoked.", { id: toastId });
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      console.error(err);
+      logger.error("Revoke error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -420,7 +421,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      console.error(err);
+      logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -454,7 +455,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      console.error(err);
+      logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -489,7 +490,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      console.error(err);
+      logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -525,7 +526,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      console.error(err);
+      logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
