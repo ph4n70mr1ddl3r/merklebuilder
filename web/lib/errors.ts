@@ -21,11 +21,11 @@ export type ErrorCode = keyof typeof ERROR_MESSAGES;
 /**
  * Parse Web3 error and return user-friendly message
  */
-export function parseWeb3Error(error: Error | { message?: string } | string): string {
+export function parseWeb3Error(error: unknown): string {
   const message =
     (error as Error)?.message?.toLowerCase() ||
     (error as { message?: string })?.message?.toLowerCase() ||
-    String(error).toLowerCase() ||
+    (typeof error === 'string' ? error.toLowerCase() : '') ||
     '';
   
   // User rejected transaction

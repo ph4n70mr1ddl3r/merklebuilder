@@ -57,8 +57,6 @@ export function useProof() {
             }
         };
 
-        startTimeout();
-
         try {
             if (!skipCache) {
                 const cached = getCachedProof(normalizedAddress);
@@ -68,7 +66,6 @@ export function useProof() {
                         setProof(cached);
                         setIsLoading(false);
                     }
-                    clearTimeouts();
 
                     validateProofOnChain(normalizedAddress, cached).then((valid) => {
                         if (isMountedRef.current) {
@@ -83,10 +80,13 @@ export function useProof() {
                 }
             }
 
+            startTimeout();
+
             let lastError: Error | null = null;
 
             for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
                 if (!isMountedRef.current) {
+                    clearTimeouts();
                     return null;
                 }
                 try {

@@ -39,6 +39,7 @@ interface CachedProof {
 }
 
 export function getCachedProof(address: string): ProofResponse | null {
+  if (typeof window === "undefined") return null;
   const normalized = normalizeAddress(address);
   if (!normalized) return null;
 
@@ -49,7 +50,6 @@ export function getCachedProof(address: string): ProofResponse | null {
 
     const data: CachedProof = JSON.parse(cached);
     
-    // Check version and expiry
     if (data.version !== PROOF_CACHE_VERSION) {
       localStorage.removeItem(key);
       return null;
@@ -68,6 +68,7 @@ export function getCachedProof(address: string): ProofResponse | null {
 }
 
 export function setCachedProof(address: string, proof: ProofResponse): void {
+  if (typeof window === "undefined") return;
   const normalized = normalizeAddress(address);
   if (!normalized) return;
 
@@ -85,6 +86,7 @@ export function setCachedProof(address: string, proof: ProofResponse): void {
 }
 
 export function clearProofCache(address?: string): void {
+  if (typeof window === "undefined") return;
   if (address) {
     const normalized = normalizeAddress(address);
     if (normalized) {
@@ -92,7 +94,6 @@ export function clearProofCache(address?: string): void {
       localStorage.removeItem(key);
     }
   } else {
-    // Clear all proofs
     const keys = Object.keys(localStorage);
     keys.forEach((key) => {
       if (key.startsWith(PROOF_CACHE_PREFIX)) {

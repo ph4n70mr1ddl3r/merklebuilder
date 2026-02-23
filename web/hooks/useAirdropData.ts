@@ -9,7 +9,7 @@ import { logger } from '../lib/logger';
 import { getCachedProof, setCachedProof, normalizeAddress } from '../lib/utils';
 import { ProofResponseSchema } from '../lib/validators';
 
-type GetInvitationsResult = [string[], boolean[]];
+type GetInvitationsResult = readonly [readonly string[], readonly boolean[]];
 const API_TIMEOUT_MS = 10000;
 
 async function validateProofOnChain(address: string, proof: ProofResponse): Promise<boolean> {
@@ -49,11 +49,15 @@ export function useAirdropData(account?: string) {
     const [checkingProof, setCheckingProof] = useState(false);
     const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
     const isMountedRef = useRef(true);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
         };
     }, []);
 
@@ -169,7 +173,11 @@ export function useAirdropData(account?: string) {
         setProof(null);
         setHasCheckedEligibility(false);
 
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
         const controller = new AbortController();
+        abortControllerRef.current = controller;
         const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
         try {
@@ -265,6 +273,7 @@ export function useAirdropData(account?: string) {
         freeClaims,
         maxInvites,
         hasClaimed,
+        setHasClaimed,
         invitedBy,
         invitesCreated,
         invitationSlots,

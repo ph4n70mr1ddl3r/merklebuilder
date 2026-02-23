@@ -8,7 +8,7 @@ import { DEMO_ABI } from "../lib/airdrop";
 import { CONTRACT_POLL_INTERVAL } from "../lib/constants";
 import type { ContractState } from "../lib/types";
 
-type GetInvitationsResult = [string[], boolean[]];
+type GetInvitationsResult = readonly [readonly string[], readonly boolean[]];
 
 export function useContractState(account?: string) {
     const fetchContractState = useCallback(async (): Promise<ContractState | null> => {

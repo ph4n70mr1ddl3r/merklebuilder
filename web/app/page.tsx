@@ -23,12 +23,6 @@ import { addressSchema } from "../lib/validators";
 import { useAirdropData } from "../hooks/useAirdropData";
 import { useMarketData } from "../hooks/useMarketData";
 
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
 const MAX_SLIPPAGE_PERCENT = 100;
 const SLIPPAGE_BPS_MULTIPLIER = 100;
 const MAX_SLIPPAGE_BPS = 10000n;
@@ -138,6 +132,7 @@ export default function HomePage() {
     return () => {
       isMountedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, chain, switchChain, airdrop.refreshOnChain, airdrop.refreshProof]);
   // airdrop object changes on every render but the refresh functions are stable via useCallback
 
@@ -418,7 +413,6 @@ export default function HomePage() {
         args: [demoAmount],
         account: account as `0x${string}`,
         value: maxEthIn,
-        chainId: CHAIN_ID,
       });
       toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
@@ -453,7 +447,6 @@ export default function HomePage() {
         functionName: "sellDemo",
         args: [demoAmount, minEthOut],
         account: account as `0x${string}`,
-        chainId: CHAIN_ID,
       });
       toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
@@ -489,7 +482,6 @@ export default function HomePage() {
         args: [minDemoOut],
         account: account as `0x${string}`,
         value: ethAmount,
-        chainId: CHAIN_ID,
       });
       toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
@@ -515,17 +507,17 @@ export default function HomePage() {
     if (chain?.id !== CHAIN_ID && switchChain) {
       try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { console.error(err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
     }
+    const effectiveSlippageBps = slippageBps ?? 100n;
     try {
       setTrading(true);
       const toastId = toast.loading("Selling DEMO for ETH…");
-      const minOut = exactEthOut - (exactEthOut * (slippageBps || 100n)) / 10000n;
+      const minOut = exactEthOut - (exactEthOut * effectiveSlippageBps) / 10000n;
       const hash = await writeContract(wagmiConfig, {
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: DEMO_ABI,
         functionName: "sellDemo",
         args: [demoAmount, minOut > 0n ? minOut : 1n],
         account: account as `0x${string}`,
-        chainId: CHAIN_ID,
       });
       toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });

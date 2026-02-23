@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { BrowserProvider, Eip1193Provider } from "ethers";
-import { CHAIN_ID } from "../lib/env";
+import { CHAIN_ID, CHAIN_NAME } from "../lib/env";
 
 export type ProviderSource = "eip6963" | "injected";
 
@@ -35,6 +35,24 @@ export function useWallet() {
     const [account, setAccount] = useState<string | null>(null);
     const [provider, setProvider] = useState<BrowserProvider | null>(null);
     const [chainId, setChainId] = useState<bigint | null>(null);
+    const providerRef = useRef<EIP1193ProviderWithEvents | null>(null);
+    const handlersRef = useRef<{
+        accountsChanged?: (...args: unknown[]) => void;
+        chainChanged?: (...args: unknown[]) => void;
+    }>({});
+
+    const cleanupListeners = useCallback(() => {
+        if (providerRef.current?.removeListener) {
+            if (handlersRef.current.accountsChanged) {
+                providerRef.current.removeListener("accountsChanged", handlersRef.current.accountsChanged);
+            }
+            if (handlersRef.current.chainChanged) {
+                providerRef.current.removeListener("chainChanged", handlersRef.current.chainChanged);
+            }
+        }
+        providerRef.current = null;
+        handlersRef.current = {};
+    }, []);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -83,8 +101,16 @@ export function useWallet() {
 
         return () => {
             window.removeEventListener("eip6963:announceProvider", handler as EventListener);
+            cleanupListeners();
         };
-    }, [setWalletProviders, setSelectedProviderId]);
+    }, [cleanupListeners]);
+
+    const disconnect = useCallback(() => {
+        cleanupListeners();
+        setAccount(null);
+        setProvider(null);
+        setChainId(null);
+    }, [cleanupListeners]);
 
     const connect = useCallback(async (providerOption?: ProviderOption) => {
         const selected = providerOption?.provider ??
@@ -92,6 +118,8 @@ export function useWallet() {
             walletProviders[0]?.provider;
 
         if (!selected) throw new Error("No wallet provider found");
+
+        cleanupListeners();
 
         const prov = new BrowserProvider(selected);
         await prov.send("eth_requestAccounts", []);
@@ -107,29 +135,28 @@ export function useWallet() {
         setAccount(address);
         setChainId(network.chainId);
 
-        // Listen for changes
         const providerWithEvents = selected as EIP1193ProviderWithEvents;
         if (providerWithEvents.on) {
-            providerWithEvents.on("accountsChanged", (accounts: string[]) => {
+            providerRef.current = providerWithEvents;
+            const handleAccountsChanged: (...args: unknown[]) => void = (args) => {
+                const accounts = args as string[];
                 if (accounts.length === 0) {
                     disconnect();
                 } else {
                     setAccount(accounts[0]);
                 }
-            });
-            providerWithEvents.on("chainChanged", () => {
+            };
+            const handleChainChanged: (...args: unknown[]) => void = () => {
                 window.location.reload();
-            });
+            };
+            handlersRef.current.accountsChanged = handleAccountsChanged;
+            handlersRef.current.chainChanged = handleChainChanged;
+            providerWithEvents.on("accountsChanged", handleAccountsChanged);
+            providerWithEvents.on("chainChanged", handleChainChanged);
         }
 
         return { provider: prov, account: address, chainId: network.chainId };
-    }, [walletProviders, selectedProviderId]);
-
-    const disconnect = useCallback(() => {
-        setAccount(null);
-        setProvider(null);
-        setChainId(null);
-    }, []);
+    }, [walletProviders, selectedProviderId, cleanupListeners, disconnect]);
 
     return {
         walletProviders,
