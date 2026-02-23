@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { readContract } from "wagmi/actions";
-import { wagmiConfig } from "../lib/wagmi";
-import { API_BASE, CONTRACT_ADDRESS } from "../lib/env";
+import { API_BASE } from "../lib/env";
 import { ProofResponseSchema } from "../lib/validators";
 import { normalizeAddress, getCachedProof, setCachedProof } from "../lib/utils";
-import { DEMO_ABI } from "../lib/airdrop";
 import type { ProofResponse } from "../lib/types";
 import { logger } from "../lib/logger";
+import { validateProofOnChain } from "../lib/proofValidation";
 
 const API_TIMEOUT_MS = 10000;
 const MAX_RETRIES = 3;
@@ -166,36 +164,4 @@ export function useProof() {
         fetchProof,
         clearProof,
     };
-}
-
-/**
- * Validate proof on-chain using contract's isEligible function
- */
-async function validateProofOnChain(
-    address: string,
-    proof: ProofResponse
-): Promise<boolean> {
-    try {
-        const isValidHashFormat = /^0x[a-fA-F0-9]{64}$/.test(proof.leaf) &&
-            proof.proof.every(p => /^0x[a-fA-F0-9]{64}$/.test(p.hash));
-        if (!isValidHashFormat) {
-            throw new Error("Invalid hash format in proof");
-        }
-
-        const proofHashes = proof.proof.map((p) => p.hash as `0x${string}`);
-        const proofFlags = proof.proof_flags;
-
-        const isEligible = await readContract(wagmiConfig, {
-            address: CONTRACT_ADDRESS as `0x${string}`,
-            abi: DEMO_ABI,
-            functionName: "isEligible",
-            args: [address as `0x${string}`, proofHashes, proofFlags],
-        });
-
-        return Boolean(isEligible);
-    } catch (error) {
-        const errorDetails = error instanceof Error ? error.message : String(error);
-        logger.error("On-chain validation error:", { error: errorDetails, address });
-        return false;
-    }
 }

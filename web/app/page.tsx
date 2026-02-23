@@ -255,7 +255,7 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
       await market.refreshReserves(account);
     } catch (err) {
-      logger.error("Claim error:", err);
+      logger.error("Buy error:", err);
       const friendlyError = parseWeb3Error(err);
       setClaimError(friendlyError);
       toast.error(
@@ -421,7 +421,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      logger.error("Claim error:", err);
+      logger.error("Buy error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -455,7 +455,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      logger.error("Claim error:", err);
+      logger.error("Sell error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -490,7 +490,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      logger.error("Claim error:", err);
+      logger.error("Buy error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
@@ -526,7 +526,7 @@ export default function HomePage() {
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      logger.error("Claim error:", err);
+      logger.error("Sell error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">

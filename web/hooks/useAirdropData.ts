@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getAddress, ZeroAddress } from 'ethers';
+import { ZeroAddress } from 'ethers';
 import { toast } from 'sonner';
 import { readContract } from 'wagmi/actions';
 import { wagmiConfig } from '../lib/wagmi';
@@ -8,34 +8,10 @@ import { shorten } from '../lib/format';
 import { logger } from '../lib/logger';
 import { getCachedProof, setCachedProof, normalizeAddress } from '../lib/utils';
 import { ProofResponseSchema } from '../lib/validators';
+import { validateProofOnChain } from '../lib/proofValidation';
 
 type GetInvitationsResult = readonly [readonly string[], readonly boolean[]];
 const API_TIMEOUT_MS = 10000;
-
-async function validateProofOnChain(address: string, proof: ProofResponse): Promise<boolean> {
-    try {
-        const isValidHashFormat = /^0x[a-fA-F0-9]{64}$/.test(proof.leaf) &&
-            proof.proof.every(p => /^0x[a-fA-F0-9]{64}$/.test(p.hash));
-        if (!isValidHashFormat) {
-            return false;
-        }
-
-        const proofHashes = proof.proof.map((p) => p.hash as `0x${string}`);
-        const proofFlags = proof.proof_flags;
-
-        const isEligible = await readContract(wagmiConfig, {
-            address: CONTRACT_ADDRESS as `0x${string}`,
-            abi: DEMO_ABI,
-            functionName: "isEligible",
-            args: [address as `0x${string}`, proofHashes, proofFlags],
-        });
-
-        return Boolean(isEligible);
-    } catch (error) {
-        logger.error("On-chain validation error:", { error, address });
-        return false;
-    }
-}
 
 export function useAirdropData(account?: string) {
     const [claimCount, setClaimCount] = useState<number | null>(null);
@@ -119,7 +95,7 @@ export function useAirdropData(account?: string) {
             })) ?? [];
 
             setHasClaimed(Boolean(claimed));
-            setInvitedBy(inviter === ZeroAddress ? null : inviter);
+            setInvitedBy((inviter as string) === ZeroAddress ? null : (inviter as string));
             setInvitesCreated(Number(created));
             setClaimCount(Number(count));
             setFreeClaims(Number(free));
