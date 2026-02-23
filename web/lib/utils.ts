@@ -80,8 +80,7 @@ export function setCachedProof(address: string, proof: ProofResponse): void {
       version: PROOF_CACHE_VERSION,
     };
     localStorage.setItem(key, JSON.stringify(data));
-  } catch (error) {
-    console.warn("Failed to cache proof:", error);
+  } catch {
   }
 }
 

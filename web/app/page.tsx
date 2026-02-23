@@ -255,7 +255,7 @@ export default function HomePage() {
       await airdrop.refreshOnChain(account);
       await market.refreshReserves(account);
     } catch (err) {
-      logger.error("Buy error:", err);
+      logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
       setClaimError(friendlyError);
       toast.error(
