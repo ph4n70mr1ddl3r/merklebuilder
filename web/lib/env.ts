@@ -28,12 +28,13 @@ function validateEnv(): EnvConfig {
         });
         return env;
     } catch (error) {
-        logger.error("❌ Invalid environment variables:", error);
         const isProduction = process.env.NODE_ENV === 'production';
         if (isProduction) {
+            logger.error("❌ Invalid environment variables:", error);
             throw new Error("Missing required environment variables. Please check your .env configuration.");
         }
-        logger.error("⚠️  Using localhost defaults for development only.");
+        logger.warn("⚠️  Environment validation failed. Using localhost defaults for development only.");
+        logger.warn("   Set up a proper .env.local file for production-like behavior.");
         return DEV_DEFAULTS;
     }
 }

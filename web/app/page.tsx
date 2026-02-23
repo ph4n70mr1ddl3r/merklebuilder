@@ -133,9 +133,7 @@ export default function HomePage() {
     return () => {
       isMountedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account, chain, switchChain, airdrop.refreshOnChain, airdrop.refreshProof]);
-  // airdrop object changes on every render but the refresh functions are stable via useCallback
+  }, [account, chain?.id, switchChain, airdrop]);
 
   // Persist slippage
   useEffect(() => {
