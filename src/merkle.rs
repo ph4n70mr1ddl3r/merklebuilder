@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use sha3::{Digest, Keccak256};
 
-use crate::{ADDRESS_HEX_LENGTH, ADDRESS_SIZE, HASH_SIZE, MAX_ADDRESSES};
+use crate::{ADDRESS_HEX_LENGTH, ADDRESS_SIZE, HASH_SIZE, MAX_ADDRESSES, MAX_LAYERS};
 
 #[derive(Debug, Clone)]
 pub enum MerkleError {
@@ -376,7 +376,7 @@ pub fn ensure_db_present(db_dir: &Path) -> Result<(), MerkleError> {
 
 pub fn available_layers(db_dir: &Path) -> Vec<PathBuf> {
     let mut layers = Vec::new();
-    for idx in 0usize..=64 {
+    for idx in 0usize..=MAX_LAYERS {
         let filename = format!("layer{:02}.bin", idx);
         let path = db_dir.join(filename);
         if path.exists() {

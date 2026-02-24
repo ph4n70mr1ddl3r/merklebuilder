@@ -9,6 +9,7 @@ pub const ADDRESS_SIZE: usize = 20;
 pub const HASH_SIZE: usize = 32;
 pub const ADDRESS_HEX_LENGTH: usize = 40;
 pub const MAX_ADDRESSES: usize = 1_000_000;
+pub const MAX_LAYERS: usize = 64;
 
 pub fn ethereum_address(secret_key: &SecretKey) -> String {
     let public_key = secret_key.public_key();
