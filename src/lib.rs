@@ -15,15 +15,18 @@ pub fn ethereum_address(secret_key: &SecretKey) -> String {
     let encoded = public_key.to_encoded_point(false);
     let public_bytes = encoded.as_bytes();
 
-    debug_assert_eq!(
-        public_bytes.len(),
-        65,
+    debug_assert!(
+        public_bytes.len() == 65,
         "Unexpected public key length: {}",
         public_bytes.len()
     );
 
+    if public_bytes.len() != 65 {
+        return String::new();
+    }
+
     let hash = Keccak256::digest(&public_bytes[1..]);
-    let address_bytes = &hash[hash.len() - 20..];
+    let address_bytes = &hash[12..];
     to_checksum_address(address_bytes)
 }
 

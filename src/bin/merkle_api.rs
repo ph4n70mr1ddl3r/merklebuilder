@@ -221,7 +221,7 @@ async fn main() {
         .route("/proof/:address", get(proof))
         .layer(cors)
         .layer(GovernorLayer {
-            config: std::sync::Arc::new(governor_conf),
+            config: Arc::new(governor_conf),
         })
         .with_state(state);
 
