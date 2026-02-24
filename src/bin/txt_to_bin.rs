@@ -79,7 +79,9 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
     }
 
     addresses.sort();
+    let original_count = addresses.len();
     addresses.dedup();
+    let duplicates_removed = original_count - addresses.len();
 
     let out_dir = PathBuf::from(output_dir);
     create_dir_all(&out_dir)?;
@@ -103,6 +105,9 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
         ADDRESS_SIZE,
         addresses_path.display()
     );
+    if duplicates_removed > 0 {
+        println!("Removed {} duplicate addresses", duplicates_removed);
+    }
     println!(
         "Built {} Merkle layers (root: 0x{root_hex}) into {}",
         layers.len(),

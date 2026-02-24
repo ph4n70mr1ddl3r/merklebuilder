@@ -19,6 +19,8 @@ use tokio::signal;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
+const DEFAULT_ALLOWED_ORIGINS: &str = "http://localhost:3000";
+
 #[derive(Clone)]
 struct AppState {
     db_dir: Arc<PathBuf>,
@@ -178,7 +180,7 @@ async fn main() {
     );
     println!(
         "CORS enabled for origins: {}",
-        env::var("ALLOWED_ORIGINS").unwrap_or_else(|_| "http://localhost:3000".to_string())
+        env::var("ALLOWED_ORIGINS").unwrap_or_else(|_| DEFAULT_ALLOWED_ORIGINS.to_string())
     );
 
     let state = AppState {
@@ -186,7 +188,7 @@ async fn main() {
     };
 
     let allowed_origins: Vec<HeaderValue> = env::var("ALLOWED_ORIGINS")
-        .unwrap_or_else(|_| "http://localhost:3000".to_string())
+        .unwrap_or_else(|_| DEFAULT_ALLOWED_ORIGINS.to_string())
         .split(',')
         .filter_map(|s| {
             let trimmed = s.trim();
