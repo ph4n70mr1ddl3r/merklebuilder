@@ -1,11 +1,10 @@
-use sha3::{Digest, Keccak256};
 use std::env;
 use std::fs::{create_dir_all, File};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 
-use merklebuilder::merkle::{hash_leaf, parse_address};
+use merklebuilder::merkle::{hash_leaf, hash_pair, parse_address};
 use merklebuilder::progress::{build_progress, progress_update_interval};
 use merklebuilder::{ADDRESS_SIZE, HASH_SIZE, MAX_ADDRESSES};
 
@@ -117,7 +116,7 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
 /// # Errors
 /// Returns an error if file creation or writing fails.
 fn write_addresses(
-    path: &PathBuf,
+    path: &Path,
     addresses: &[[u8; ADDRESS_SIZE]],
 ) -> Result<(), Box<dyn std::error::Error>> {
     let out_file = File::create(path)?;
@@ -143,13 +142,6 @@ fn write_layers(
         writer.flush()?;
     }
     Ok(())
-}
-
-fn hash_pair(left: &[u8; HASH_SIZE], right: &[u8; HASH_SIZE]) -> [u8; HASH_SIZE] {
-    let mut hasher = Keccak256::new();
-    hasher.update(left);
-    hasher.update(right);
-    hasher.finalize().into()
 }
 
 /// Builds Merkle tree layers from leaf hashes.

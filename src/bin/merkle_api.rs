@@ -236,7 +236,10 @@ async fn main() {
         println!("\nShutting down gracefully...");
     };
 
-    if let Err(e) = axum::serve(listener, app).with_graceful_shutdown(shutdown).await {
+    if let Err(e) = axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown)
+        .await
+    {
         eprintln!("Server error: {e}");
         std::process::exit(1);
     }

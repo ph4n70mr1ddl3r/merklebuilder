@@ -232,6 +232,14 @@ pub fn hash_leaf(address: &[u8; ADDRESS_SIZE]) -> [u8; HASH_SIZE] {
     hasher.finalize().into()
 }
 
+#[must_use]
+pub fn hash_pair(left: &[u8; HASH_SIZE], right: &[u8; HASH_SIZE]) -> [u8; HASH_SIZE] {
+    let mut hasher = Keccak256::new();
+    hasher.update(left);
+    hasher.update(right);
+    hasher.finalize().into()
+}
+
 pub fn layer_node_count(path: &Path) -> Result<usize, MerkleError> {
     let len = File::open(path)
         .and_then(|f| f.metadata())
