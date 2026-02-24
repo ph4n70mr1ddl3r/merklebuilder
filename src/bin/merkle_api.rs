@@ -255,16 +255,6 @@ async fn proof(
     Path(address): Path<String>,
     State(state): State<AppState>,
 ) -> Result<Json<ProofResponse>, ApiError> {
-    let len = address.len();
-    if len > 42 {
-        return Err(ApiError::BadRequest("Address too long".to_string()));
-    }
-    if address.starts_with("0x") && len < 42 {
-        return Err(ApiError::BadRequest("Invalid address length".to_string()));
-    }
-    if !address.starts_with("0x") && len < 40 {
-        return Err(ApiError::BadRequest("Invalid address length".to_string()));
-    }
     let proof = build_proof(&state.db_dir, &address).map_err(classify_error)?;
     Ok(Json(proof.into()))
 }
