@@ -20,6 +20,8 @@ use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 const DEFAULT_ALLOWED_ORIGINS: &str = "http://localhost:3000";
+const DEFAULT_RATE_LIMIT_PER_SECOND: u64 = 20;
+const DEFAULT_RATE_LIMIT_BURST_SIZE: u32 = 50;
 
 #[derive(Clone)]
 struct AppState {
@@ -207,9 +209,18 @@ async fn main() {
         .allow_methods([Method::GET, Method::OPTIONS])
         .allow_headers([header::CONTENT_TYPE, header::ACCEPT]);
 
+    let rate_per_second: u64 = env::var("RATE_LIMIT_PER_SECOND")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_RATE_LIMIT_PER_SECOND);
+    let burst_size: u32 = env::var("RATE_LIMIT_BURST_SIZE")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_RATE_LIMIT_BURST_SIZE);
+
     let governor_conf = GovernorConfigBuilder::default()
-        .per_second(20)
-        .burst_size(50)
+        .per_second(rate_per_second)
+        .burst_size(burst_size)
         .finish()
         .unwrap_or_else(|| {
             eprintln!("Failed to create rate limiter config");
@@ -390,5 +401,25 @@ mod tests {
         let err = MerkleError::Internal("Some internal error".to_string());
         let api_error = classify_error(&err);
         assert!(matches!(api_error, ApiError::Internal(_)));
+    }
+
+    #[test]
+    fn test_odd_node_proof() {
+        let (_temp, db_dir) = create_test_db();
+        let address_str = "0x0303030303030303030303030303030303030303";
+
+        let result = build_proof(&db_dir, address_str);
+        assert!(result.is_ok(), "Odd node proof should succeed");
+
+        let proof = result.unwrap();
+        assert_eq!(proof.index, 2, "Third address should be at index 2");
+        assert_eq!(proof.total, 3);
+        assert_eq!(proof.root_level, 2);
+        assert_eq!(proof.steps.len(), 2, "Should have 2 proof steps");
+        
+        assert_eq!(proof.steps[0].level, 0);
+        assert_eq!(proof.steps[0].sibling_index, 2, "Odd node should reference itself as sibling at layer 0");
+        
+        assert_eq!(proof.steps[1].level, 1);
     }
 }

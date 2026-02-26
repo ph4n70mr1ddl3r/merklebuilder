@@ -160,20 +160,16 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Merk
         }
 
         let is_left = path_index % 2 == 0;
-        let sibling_idx = if is_left {
+        let (sibling_idx, sibling_hash) = if is_left {
             if path_index + 1 >= node_count {
-                return Err(MerkleError::IndexOutOfBounds {
-                    level,
-                    index: path_index + 1,
-                    count: node_count,
-                });
+                (path_index, read_node(&layer_path, path_index)?)
+            } else {
+                (path_index + 1, read_node(&layer_path, path_index + 1)?)
             }
-            path_index + 1
         } else {
-            path_index - 1
+            (path_index - 1, read_node(&layer_path, path_index - 1)?)
         };
 
-        let sibling_hash = read_node(&layer_path, sibling_idx)?;
         proof_steps.push(ProofStep {
             level,
             sibling_index: sibling_idx,
