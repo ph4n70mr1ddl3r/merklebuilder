@@ -10,6 +10,7 @@ pub const HASH_SIZE: usize = 32;
 pub const ADDRESS_HEX_LENGTH: usize = 40;
 pub const MAX_ADDRESSES: usize = 1_000_000;
 pub const MAX_LAYERS: usize = 64;
+pub const UNCOMPRESSED_PUBLIC_KEY_SIZE: usize = 65;
 
 #[derive(Debug)]
 pub enum EthereumAddressError {
@@ -39,7 +40,7 @@ pub fn ethereum_address(secret_key: &SecretKey) -> Result<String, EthereumAddres
     let encoded = public_key.to_encoded_point(false);
     let public_bytes = encoded.as_bytes();
 
-    if public_bytes.len() != 65 {
+    if public_bytes.len() != UNCOMPRESSED_PUBLIC_KEY_SIZE {
         return Err(EthereumAddressError::InvalidPublicKeyLength(
             public_bytes.len(),
         ));

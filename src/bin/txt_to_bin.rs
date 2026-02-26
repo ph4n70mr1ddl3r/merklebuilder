@@ -230,3 +230,93 @@ fn count_non_empty_lines(path: &str) -> Result<usize, Box<dyn std::error::Error>
     }
     Ok(count)
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn test_total_hash_ops_single() {
+        assert_eq!(total_hash_ops(1), 0);
+    }
+
+    #[test]
+    fn test_total_hash_ops_two() {
+        assert_eq!(total_hash_ops(2), 1);
+    }
+
+    #[test]
+    fn test_total_hash_ops_three() {
+        assert_eq!(total_hash_ops(3), 3);
+    }
+
+    #[test]
+    fn test_total_hash_ops_four() {
+        assert_eq!(total_hash_ops(4), 3);
+    }
+
+    #[test]
+    fn test_total_hash_ops_eight() {
+        assert_eq!(total_hash_ops(8), 7);
+    }
+
+    #[test]
+    fn test_count_non_empty_lines_empty_file() {
+        let mut temp = NamedTempFile::new().unwrap();
+        temp.write_all(b"").unwrap();
+        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_count_non_empty_lines_only_whitespace() {
+        let mut temp = NamedTempFile::new().unwrap();
+        temp.write_all(b"   \n\n\t\n   ").unwrap();
+        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_count_non_empty_lines_mixed() {
+        let mut temp = NamedTempFile::new().unwrap();
+        temp.write_all(b"line1\n\n  line2  \n\nline3").unwrap();
+        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_count_non_empty_lines_with_addresses() {
+        let mut temp = NamedTempFile::new().unwrap();
+        temp.write_all(b"0x1234567890123456789012345678901234567890\n\n0xabcd567890123456789012345678901234567890").unwrap();
+        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_parse_args_missing_input() {
+        let result = parse_args_with(vec!["txt_to_bin"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Missing required argument"));
+    }
+
+    #[test]
+    fn test_parse_args_too_many() {
+        let result = parse_args_with(vec!["txt_to_bin", "input.txt", "outdir", "extra"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Too many arguments"));
+    }
+
+    fn parse_args_with(args: Vec<&str>) -> Result<(String, String), String> {
+        let mut iter = args.into_iter();
+        iter.next();
+        let input = iter.next().ok_or("Missing required argument: input file")?;
+        let output_dir = iter.next().unwrap_or("merkledb");
+        if iter.next().is_some() {
+            return Err("Too many arguments provided".to_string());
+        }
+        Ok((input.to_string(), output_dir.to_string()))
+    }
+}

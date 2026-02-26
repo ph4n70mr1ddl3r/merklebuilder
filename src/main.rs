@@ -77,3 +77,72 @@ fn write_addresses(count: usize, output_path: &str) -> Result<(), Box<dyn std::e
     println!("Wrote {count} addresses to {output_path}");
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    #[test]
+    fn test_parse_args_valid() {
+        let result = parse_args_with(vec!["prog", "100", "output.txt"]);
+        assert!(result.is_ok());
+        let (count, path) = result.unwrap();
+        assert_eq!(count, 100);
+        assert_eq!(path, "output.txt");
+    }
+
+    #[test]
+    fn test_parse_args_missing_count() {
+        let result = parse_args_with(vec!["prog"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Missing required argument"));
+    }
+
+    #[test]
+    fn test_parse_args_missing_output() {
+        let result = parse_args_with(vec!["prog", "100"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Missing required argument"));
+    }
+
+    #[test]
+    fn test_parse_args_too_many() {
+        let result = parse_args_with(vec!["prog", "100", "out.txt", "extra"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Too many arguments"));
+    }
+
+    #[test]
+    fn test_parse_args_invalid_count() {
+        let result = parse_args_with(vec!["prog", "notanumber", "out.txt"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("positive integer"));
+    }
+
+    #[test]
+    fn test_parse_args_zero_count() {
+        let result = parse_args_with(vec!["prog", "0", "out.txt"]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("greater than zero"));
+    }
+
+    fn parse_args_with(args: Vec<&str>) -> Result<(usize, String), String> {
+        let mut iter = args.into_iter();
+        iter.next();
+        let count_raw = iter
+            .next()
+            .ok_or("Missing required argument: number of addresses")?;
+        let output_path = iter
+            .next()
+            .ok_or("Missing required argument: output file")?;
+        if iter.next().is_some() {
+            return Err("Too many arguments provided".to_string());
+        }
+        let count: usize = count_raw
+            .parse()
+            .map_err(|_| "Number of addresses must be a positive integer".to_string())?;
+        if count == 0 {
+            return Err("Number of addresses must be greater than zero".to_string());
+        }
+        Ok((count, output_path.to_string()))
+    }
+}

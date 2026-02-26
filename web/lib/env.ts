@@ -41,12 +41,15 @@ function validateEnv(): EnvConfig {
 
 const env = validateEnv();
 
-const CHAIN_ID_NUM = Number(env.NEXT_PUBLIC_CHAIN_ID);
-if (!Number.isInteger(CHAIN_ID_NUM) || CHAIN_ID_NUM <= 0) {
-    logger.error(`Invalid CHAIN_ID: ${env.NEXT_PUBLIC_CHAIN_ID}, falling back to Sepolia`);
+const DEFAULT_CHAIN_ID = 11155111;
+
+function parseChainId(value: string | undefined): number {
+    if (!value) return DEFAULT_CHAIN_ID;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_CHAIN_ID;
 }
 
-export const CHAIN_ID = Number.isInteger(CHAIN_ID_NUM) && CHAIN_ID_NUM > 0 ? CHAIN_ID_NUM : 11155111;
+export const CHAIN_ID = parseChainId(env.NEXT_PUBLIC_CHAIN_ID);
 export const API_BASE = env.NEXT_PUBLIC_API_BASE;
 export const CONTRACT_ADDRESS = env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 export const CHAIN_NAME = env.NEXT_PUBLIC_CHAIN_NAME;
