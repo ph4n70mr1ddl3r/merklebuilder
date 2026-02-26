@@ -7,6 +7,7 @@ interface EnvConfig {
     NEXT_PUBLIC_CHAIN_ID: string;
     NEXT_PUBLIC_CHAIN_NAME: string;
     NEXT_PUBLIC_RPC_URL: string;
+    NEXT_PUBLIC_BLOCK_EXPLORER_URL?: string;
 }
 
 const DEV_DEFAULTS: EnvConfig = {
@@ -15,6 +16,7 @@ const DEV_DEFAULTS: EnvConfig = {
     NEXT_PUBLIC_CHAIN_ID: "11155111",
     NEXT_PUBLIC_CHAIN_NAME: "Sepolia",
     NEXT_PUBLIC_RPC_URL: "https://1rpc.io/sepolia",
+    NEXT_PUBLIC_BLOCK_EXPLORER_URL: "https://sepolia.etherscan.io",
 };
 
 function validateEnv(): EnvConfig {
@@ -26,7 +28,10 @@ function validateEnv(): EnvConfig {
             NEXT_PUBLIC_CHAIN_NAME: process.env.NEXT_PUBLIC_CHAIN_NAME,
             NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL,
         });
-        return env;
+        return {
+            ...env,
+            NEXT_PUBLIC_BLOCK_EXPLORER_URL: process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL,
+        };
     } catch (error) {
         const isProduction = process.env.NODE_ENV === 'production';
         if (isProduction) {
@@ -54,3 +59,4 @@ export const API_BASE = env.NEXT_PUBLIC_API_BASE;
 export const CONTRACT_ADDRESS = env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 export const CHAIN_NAME = env.NEXT_PUBLIC_CHAIN_NAME;
 export const RPC_URL = env.NEXT_PUBLIC_RPC_URL;
+export const BLOCK_EXPLORER_URL = env.NEXT_PUBLIC_BLOCK_EXPLORER_URL;

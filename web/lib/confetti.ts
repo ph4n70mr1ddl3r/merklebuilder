@@ -2,7 +2,7 @@
 
 import confetti from 'canvas-confetti';
 
-export function fireConfettiBurst() {
+export function fireConfettiBurst(): () => void {
     const duration = 2000;
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
@@ -11,7 +11,13 @@ export function fireConfettiBurst() {
         return Math.random() * (max - min) + min;
     }
 
+    let cancelled = false;
     const interval: ReturnType<typeof setInterval> = setInterval(function () {
+        if (cancelled) {
+            clearInterval(interval);
+            return;
+        }
+
         const timeLeft = animationEnd - Date.now();
 
         if (timeLeft <= 0) {
@@ -33,4 +39,9 @@ export function fireConfettiBurst() {
             colors: ['#34d399', '#22d3ee', '#a78bfa', '#fbbf24', '#f472b6'],
         });
     }, 250);
+
+    return () => {
+        cancelled = true;
+        clearInterval(interval);
+    };
 }

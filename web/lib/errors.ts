@@ -1,6 +1,4 @@
-/**
- * Error handling utilities for better UX
- */
+import { BLOCK_EXPLORER_URL, CHAIN_ID } from "./env";
 
 const ERROR_MESSAGES = {
   USER_DENIED: "You rejected the transaction. Click to try again.",
@@ -80,15 +78,18 @@ export function parseWeb3Error(error: unknown): string {
   return 'Transaction failed. Please try again.';
 }
 
-/**
- * Get block explorer URL for transaction
- */
-export function getExplorerUrl(txHash: string, chainId: number): string {
+export function getExplorerUrl(txHash: string, chainId?: number): string {
+  const effectiveChainId = chainId ?? CHAIN_ID;
+  
+  if (BLOCK_EXPLORER_URL) {
+    return `${BLOCK_EXPLORER_URL}/tx/${txHash}`;
+  }
+  
   const explorers: Record<number, string> = {
     1: 'https://etherscan.io',
     11155111: 'https://sepolia.etherscan.io',
   };
   
-  const baseUrl = explorers[chainId] || 'https://etherscan.io';
+  const baseUrl = explorers[effectiveChainId] || 'https://etherscan.io';
   return `${baseUrl}/tx/${txHash}`;
 }

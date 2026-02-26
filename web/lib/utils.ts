@@ -93,11 +93,9 @@ export function clearProofCache(address?: string): void {
       localStorage.removeItem(key);
     }
   } else {
-    const keys = Object.keys(localStorage);
-    keys.forEach((key) => {
-      if (key.startsWith(PROOF_CACHE_PREFIX)) {
-        localStorage.removeItem(key);
-      }
-    });
+    const keysToRemove = Object.keys(localStorage).filter((key) =>
+      key.startsWith(PROOF_CACHE_PREFIX)
+    );
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
   }
 }
