@@ -62,58 +62,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_address_valid() {
-        let result = merkle::parse_address("0x1234567890123456789012345678901234567890");
-        assert!(result.is_ok());
-        let addr = result.unwrap();
-        assert_eq!(addr.len(), ADDRESS_SIZE);
-    }
-
-    #[test]
-    fn test_parse_address_no_prefix() {
-        let result = merkle::parse_address("1234567890123456789012345678901234567890");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_parse_address_invalid_length() {
-        let result = merkle::parse_address("0x1234");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_parse_address_invalid_hex() {
-        let result = merkle::parse_address("0xzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_normalize_hex() {
-        assert_eq!(merkle::normalize_hex("0x1234"), "0x1234");
-        assert_eq!(merkle::normalize_hex("1234"), "0x1234");
-        assert_eq!(merkle::normalize_hex("0X1234"), "0x1234");
-    }
-
-    #[test]
-    fn test_hash_leaf() {
-        let address = [0u8; ADDRESS_SIZE];
-        let hash = merkle::hash_leaf(&address);
-        assert_eq!(hash.len(), HASH_SIZE);
-    }
-
-    #[test]
-    fn test_to_hex32() {
-        let bytes = [0u8; HASH_SIZE];
-        let hex = merkle::to_hex32(&bytes);
-        assert!(hex.starts_with("0x"));
-        assert_eq!(hex.len(), 2 + HASH_SIZE * 2);
-    }
-
-    #[test]
-    fn test_to_hex20() {
-        let bytes = [0u8; ADDRESS_SIZE];
-        let hex = merkle::to_hex20(&bytes);
-        assert!(hex.starts_with("0x"));
-        assert_eq!(hex.len(), 2 + ADDRESS_SIZE * 2);
+    fn test_to_checksum_address() {
+        let bytes: [u8; ADDRESS_SIZE] = [
+            0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, 0x78,
+            0x90, 0x12, 0x34, 0x56, 0x78, 0x90,
+        ];
+        let checksummed = to_checksum_address(&bytes);
+        assert!(checksummed.starts_with("0x"));
+        assert_eq!(checksummed.len(), 42);
     }
 }

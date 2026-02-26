@@ -12,9 +12,9 @@ pub fn build_progress(len: u64) -> ProgressBar {
     bar
 }
 
-#[must_use]
 /// Calculates how often to update the progress bar.
 /// Ensures updates happen at least every 1000 items and at most every 100000 items.
+#[must_use]
 pub fn progress_update_interval(count: usize) -> usize {
     if count < 1_000 {
         return count.max(1);

@@ -94,16 +94,17 @@ impl From<ProofResult> for ProofResponse {
             steps,
         } = proof;
 
-        let proof_flags: Vec<bool> = steps.iter().map(|step| step.side.proof_flag()).collect();
-        let proof_nodes: Vec<ProofNode> = steps
-            .into_iter()
-            .map(|step| ProofNode {
+        let mut proof_flags = Vec::with_capacity(steps.len());
+        let mut proof_nodes = Vec::with_capacity(steps.len());
+        for step in steps {
+            proof_flags.push(step.side.proof_flag());
+            proof_nodes.push(ProofNode {
                 level: step.level,
                 sibling_index: step.sibling_index,
                 side: step.side.as_str().to_string(),
                 hash: to_hex32(&step.sibling_hash),
-            })
-            .collect();
+            });
+        }
 
         ProofResponse {
             address: normalized_address,
@@ -184,7 +185,7 @@ async fn main() {
     );
 
     let state = AppState {
-        db_dir: Arc::new(config.data_dir.clone()),
+        db_dir: Arc::new(config.data_dir),
     };
 
     let allowed_origins: Vec<HeaderValue> = env::var("ALLOWED_ORIGINS")
