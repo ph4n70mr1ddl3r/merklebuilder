@@ -50,10 +50,7 @@ function createLogger(config: LoggerConfig = {}) {
 
 export const logger = createLogger();
 
-/**
- * Helper to extract error message safely
- */
-function getErrorMessage(error: unknown): string {
+export function getErrorMessage(error: unknown): string {
     if (error instanceof Error) {
         return error.message;
     }

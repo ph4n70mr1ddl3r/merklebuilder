@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { formatEther, parseEther } from 'viem';
 import { formatToken } from '../../lib/format';
 import { MinimalButton } from './MinimalButton';
+import { INPUT_DEBOUNCE_MS } from '../../lib/constants';
 
 type MinimalMarketPanelProps = {
   account?: string;
@@ -44,16 +45,47 @@ export function MinimalMarketPanel({
   const [inputAmount, setInputAmount] = useState('');
   const [outputAmount, setOutputAmount] = useState('');
   const [lastEdited, setLastEdited] = useState<'input' | 'output'>('input');
+  const [debouncedInput, setDebouncedInput] = useState('');
+  const [debouncedOutput, setDebouncedOutput] = useState('');
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isBuying = direction === 'eth-to-demo';
 
-  // Calculate based on which field was last edited
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      if (lastEdited === 'input') {
+        setDebouncedInput(inputAmount);
+      } else {
+        setDebouncedOutput(outputAmount);
+      }
+    }, INPUT_DEBOUNCE_MS);
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [inputAmount, outputAmount, lastEdited]);
+
   const { calculatedAmount, calculationError } = useMemo(() => {
     if (!poolFunded || !poolHasDemo) {
       return { calculatedAmount: null, calculationError: null };
     }
+    if (reserveEth <= 0n || reserveDemo <= 0n) {
+      return { calculatedAmount: null, calculationError: 'Insufficient pool liquidity' };
+    }
 
-    const editedAmount = lastEdited === 'input' ? inputAmount : outputAmount;
+    const editedAmount = lastEdited === 'input' ? debouncedInput : debouncedOutput;
     if (!editedAmount || editedAmount === '0') {
       return { calculatedAmount: null, calculationError: null };
     }
@@ -100,23 +132,23 @@ export function MinimalMarketPanel({
     } catch {
       return { calculatedAmount: null, calculationError: 'Invalid amount' };
     }
-  }, [lastEdited, inputAmount, outputAmount, poolFunded, poolHasDemo, reserveEth, reserveDemo, demoBalance, isBuying]);
+  }, [lastEdited, debouncedInput, debouncedOutput, poolFunded, poolHasDemo, reserveEth, reserveDemo, demoBalance, isBuying]);
 
-  // Update the opposite field when calculation changes
-  useMemo(() => {
+  useEffect(() => {
     if (calculatedAmount !== null) {
       const formatted = formatEther(calculatedAmount);
       if (lastEdited === 'input') {
         setOutputAmount(formatted);
+        setDebouncedOutput(formatted);
       } else {
         setInputAmount(formatted);
+        setDebouncedInput(formatted);
       }
-    } else if (!inputAmount && !outputAmount) {
+    } else if (!debouncedInput && !debouncedOutput) {
       setInputAmount('');
       setOutputAmount('');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calculatedAmount, lastEdited]);
+  }, [calculatedAmount, lastEdited, debouncedInput, debouncedOutput]);
 
   const handleInputChange = (value: string) => {
     setInputAmount(value);

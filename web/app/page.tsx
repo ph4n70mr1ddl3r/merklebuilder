@@ -25,10 +25,7 @@ import { useMarketData } from "../hooks/useMarketData";
 import { logger } from "../lib/logger";
 import { clearProofCache } from "../lib/utils";
 
-const MAX_SLIPPAGE_PERCENT = 100;
-const SLIPPAGE_BPS_MULTIPLIER = 100;
-const MAX_SLIPPAGE_BPS = 10000n;
-const DECIMAL_PLACES = 2;
+import { MAX_SLIPPAGE_PERCENT, SLIPPAGE_BPS_MULTIPLIER, MAX_SLIPPAGE_BPS, DECIMAL_PLACES } from "../lib/constants";
 
 const parseSlippageBps = (value: string): bigint | null => {
   const trimmed = value.trim();
@@ -537,14 +534,25 @@ export default function HomePage() {
   const copyToClipboard = async (value: string, key: string) => {
     if (!value) return;
     try {
-      await navigator.clipboard?.writeText(value);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = value;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
       setCopiedKey(key);
       if (copiedTimeoutRef.current) {
         clearTimeout(copiedTimeoutRef.current);
       }
       copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 3000);
     } catch (err) {
-      console.warn("Failed to copy to clipboard:", err);
+      logger.warn("Failed to copy to clipboard:", err);
     }
   };
 
@@ -553,7 +561,18 @@ export default function HomePage() {
     try {
       const baseUrl = window.location.origin + window.location.pathname;
       const inviteUrl = `${baseUrl}?invite=${account}`;
-      await navigator.clipboard?.writeText(inviteUrl);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(inviteUrl);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = inviteUrl;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
       toast.success("Invite link copied!");
       setCopiedKey("invite-link");
       if (copiedTimeoutRef.current) {
@@ -561,7 +580,7 @@ export default function HomePage() {
       }
       copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), 3000);
     } catch (err) {
-      console.warn("Failed to copy invite link:", err);
+      logger.warn("Failed to copy invite link:", err);
       toast.error("Failed to copy link");
     }
   };

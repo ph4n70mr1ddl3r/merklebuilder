@@ -6,6 +6,7 @@ import { wagmiConfig } from "../lib/wagmi";
 import { CONTRACT_ADDRESS } from "../lib/env";
 import { DEMO_ABI } from "../lib/airdrop";
 import { CONTRACT_POLL_INTERVAL } from "../lib/constants";
+import { logger } from "../lib/logger";
 import type { ContractState } from "../lib/types";
 
 type GetInvitationsResult = readonly [readonly string[], readonly boolean[]];
@@ -76,7 +77,7 @@ export function useContractState(account?: string) {
                 invitationSlots: parsedSlots,
             };
         } catch (error) {
-            console.error("Failed to fetch contract state:", error);
+            logger.error("Failed to fetch contract state:", error);
             throw error;
         }
     }, [account]);

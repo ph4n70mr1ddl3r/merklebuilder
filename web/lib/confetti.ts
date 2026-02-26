@@ -2,39 +2,6 @@
 
 import confetti from 'canvas-confetti';
 
-function fireConfetti() {
-    // First burst - center
-    confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#34d399', '#22d3ee', '#a78bfa', '#fbbf24'],
-    });
-
-    // Second burst - left side
-    setTimeout(() => {
-        confetti({
-            particleCount: 50,
-            angle: 60,
-            spread: 55,
-            origin: { x: 0 },
-            colors: ['#34d399', '#22d3ee', '#a78bfa'],
-        });
-    }, 150);
-
-    // Third burst - right side
-    setTimeout(() => {
-        confetti({
-            particleCount: 50,
-            angle: 120,
-            spread: 55,
-            origin: { x: 1 },
-            colors: ['#34d399', '#22d3ee', '#a78bfa'],
-        });
-    }, 300);
-}
-
-// Longer celebration for big moments
 export function fireConfettiBurst() {
     const duration = 2000;
     const animationEnd = Date.now() + duration;
