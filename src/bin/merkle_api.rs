@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
-use axum::http::{HeaderValue, Method, StatusCode};
+use axum::http::{header, HeaderValue, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Json;
@@ -205,7 +205,7 @@ async fn main() {
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::list(allowed_origins))
         .allow_methods([Method::GET, Method::OPTIONS])
-        .allow_headers(tower_http::cors::Any);
+        .allow_headers([header::CONTENT_TYPE, header::ACCEPT]);
 
     let governor_conf = GovernorConfigBuilder::default()
         .per_second(20)

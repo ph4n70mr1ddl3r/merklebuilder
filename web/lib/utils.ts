@@ -72,15 +72,24 @@ export function setCachedProof(address: string, proof: ProofResponse): void {
   const normalized = normalizeAddress(address);
   if (!normalized) return;
 
+  const key = `${PROOF_CACHE_PREFIX}${normalized.toLowerCase()}`;
+  const data: CachedProof = {
+    proof,
+    timestamp: Date.now(),
+    version: PROOF_CACHE_VERSION,
+  };
+
   try {
-    const key = `${PROOF_CACHE_PREFIX}${normalized.toLowerCase()}`;
-    const data: CachedProof = {
-      proof,
-      timestamp: Date.now(),
-      version: PROOF_CACHE_VERSION,
-    };
     localStorage.setItem(key, JSON.stringify(data));
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+      clearProofCache();
+      try {
+        localStorage.setItem(key, JSON.stringify(data));
+      } catch {
+        // Silently fail - caching is optional
+      }
+    }
   }
 }
 

@@ -62,7 +62,7 @@ fn write_addresses(count: usize, output_path: &str) -> Result<(), Box<dyn std::e
 
     for idx in 0..count {
         let secret_key = SecretKey::random(&mut rng);
-        let address = ethereum_address(&secret_key);
+        let address = ethereum_address(&secret_key)?;
         writer.write_all(address.as_bytes())?;
         writer.write_all(b"\n")?;
 

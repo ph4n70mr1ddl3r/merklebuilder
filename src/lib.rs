@@ -11,25 +11,37 @@ pub const ADDRESS_HEX_LENGTH: usize = 40;
 pub const MAX_ADDRESSES: usize = 1_000_000;
 pub const MAX_LAYERS: usize = 64;
 
-#[must_use]
-pub fn ethereum_address(secret_key: &SecretKey) -> String {
+#[derive(Debug)]
+pub enum EthereumAddressError {
+    InvalidPublicKeyLength(usize),
+}
+
+impl std::fmt::Display for EthereumAddressError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EthereumAddressError::InvalidPublicKeyLength(len) => {
+                write!(f, "Unexpected public key length: {}", len)
+            }
+        }
+    }
+}
+
+impl std::error::Error for EthereumAddressError {}
+
+pub fn ethereum_address(secret_key: &SecretKey) -> Result<String, EthereumAddressError> {
     let public_key = secret_key.public_key();
     let encoded = public_key.to_encoded_point(false);
     let public_bytes = encoded.as_bytes();
 
-    debug_assert!(
-        public_bytes.len() == 65,
-        "Unexpected public key length: {}",
-        public_bytes.len()
-    );
-
     if public_bytes.len() != 65 {
-        return String::new();
+        return Err(EthereumAddressError::InvalidPublicKeyLength(
+            public_bytes.len(),
+        ));
     }
 
     let hash = Keccak256::digest(&public_bytes[1..]);
     let address_bytes = &hash[12..];
-    to_checksum_address(address_bytes)
+    Ok(to_checksum_address(address_bytes))
 }
 
 #[must_use]

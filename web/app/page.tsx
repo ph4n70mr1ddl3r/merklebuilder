@@ -23,6 +23,7 @@ import { addressSchema } from "../lib/validators";
 import { useAirdropData } from "../hooks/useAirdropData";
 import { useMarketData } from "../hooks/useMarketData";
 import { logger } from "../lib/logger";
+import { clearProofCache } from "../lib/utils";
 
 const MAX_SLIPPAGE_PERCENT = 100;
 const SLIPPAGE_BPS_MULTIPLIER = 100;
@@ -43,6 +44,26 @@ const parseSlippageBps = (value: string): bigint | null => {
   const bps = BigInt(whole * SLIPPAGE_BPS_MULTIPLIER + fractionalValue);
   if (bps > MAX_SLIPPAGE_BPS) return null;
   return bps;
+};
+
+const ensureCorrectChain = async (
+  chainId: number | undefined,
+  switchChainFn: ((args: { chainId: number }) => void) | undefined,
+  chainName: string
+): Promise<boolean> => {
+  if (chainId === CHAIN_ID) return true;
+  if (!switchChainFn) {
+    toast.error(`Switch to ${chainName} to continue.`);
+    return false;
+  }
+  try {
+    await switchChainFn({ chainId: CHAIN_ID });
+    return true;
+  } catch (err) {
+    logger.error("Failed to switch chain:", err);
+    toast.error(`Switch to ${chainName} to continue.`);
+    return false;
+  }
 };
 
 export default function HomePage() {
@@ -206,14 +227,7 @@ export default function HomePage() {
       return;
     }
     
-    if (chain?.id !== CHAIN_ID && switchChain) {
-      try {
-        await switchChain({ chainId: CHAIN_ID });
-      } catch {
-        toast.error("Switch to Sepolia to claim.");
-        return;
-      }
-    }
+    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
     
     try {
       setClaiming(true);
@@ -247,6 +261,7 @@ export default function HomePage() {
       }
       
       toast.success("🎉 Claim confirmed! DEMO minted.", { id: toastId });
+      clearProofCache(account);
       airdrop.setHasClaimed(true);
       setClaimError(null);
       fireConfettiBurst();
@@ -311,14 +326,7 @@ export default function HomePage() {
       return;
     }
     
-    if (chain?.id !== CHAIN_ID && switchChain) {
-      try {
-        await switchChain({ chainId: CHAIN_ID });
-      } catch (err) {
-        logger.error("Failed to switch chain:", err);
-        return;
-      }
-    }
+    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
 
     try {
       setInviting(true);
@@ -353,19 +361,16 @@ export default function HomePage() {
 
   const revokeInvite = async (slotIndex: number) => {
     if (!account) return;
+    if (slotIndex < 0 || slotIndex >= airdrop.invitationSlots.length) {
+      toast.error("Invalid slot index.");
+      return;
+    }
     const slot = airdrop.invitationSlots[slotIndex];
     if (!slot?.invitee) {
       toast.error("Slot is empty; nothing to revoke.");
       return;
     }
-    if (chain?.id !== CHAIN_ID && switchChain) {
-      try {
-        await switchChain({ chainId: CHAIN_ID });
-      } catch {
-        toast.error("Switch to Sepolia to revoke.");
-        return;
-      }
-    }
+    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
     try {
       setRevokingSlot(slotIndex);
       const toastId = toast.loading("Revoking invitation…");
@@ -399,9 +404,7 @@ export default function HomePage() {
   // Trade handlers
   const handleBuyExactDemo = async (demoAmount: bigint, maxEthIn: bigint) => {
     if (!account) return;
-    if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
-    }
+    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
     try {
       setTrading(true);
       const toastId = toast.loading("Buying DEMO…");
@@ -434,9 +437,7 @@ export default function HomePage() {
 
   const handleSellExactDemo = async (demoAmount: bigint, minEthOut: bigint) => {
     if (!account) return;
-    if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
-    }
+    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
     try {
       setTrading(true);
       const toastId = toast.loading("Selling DEMO…");
@@ -468,9 +469,7 @@ export default function HomePage() {
 
   const handleSpendExactEth = async (ethAmount: bigint, minDemoOut: bigint) => {
     if (!account) return;
-    if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
-    }
+    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
     try {
       setTrading(true);
       const toastId = toast.loading("Spending ETH…");
@@ -503,9 +502,7 @@ export default function HomePage() {
 
   const handleReceiveExactEth = async (demoAmount: bigint, exactEthOut: bigint) => {
     if (!account) return;
-    if (chain?.id !== CHAIN_ID && switchChain) {
-      try { await switchChain({ chainId: CHAIN_ID }); } catch (err) { logger.error("Switch chain error:", err); toast.error(`Switch to ${CHAIN_NAME}`); return; }
-    }
+    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
     const effectiveSlippageBps = slippageBps ?? 100n;
     try {
       setTrading(true);

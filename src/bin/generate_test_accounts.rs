@@ -108,7 +108,7 @@ fn generate_accounts(
 
     for _ in 0..count {
         let secret_key = SecretKey::random(&mut rng);
-        let address = ethereum_address(&secret_key);
+        let address = ethereum_address(&secret_key)?;
         let private_key = format!("0x{}", hex::encode(secret_key.to_bytes()));
 
         accounts.push(TestAccount {

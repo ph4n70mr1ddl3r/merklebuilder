@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { ZeroAddress } from 'ethers';
 import { toast } from 'sonner';
 import { readContract } from 'wagmi/actions';
 import { wagmiConfig } from '../lib/wagmi';
@@ -12,6 +11,7 @@ import { validateProofOnChain } from '../lib/proofValidation';
 
 type GetInvitationsResult = readonly [readonly string[], readonly boolean[]];
 const API_TIMEOUT_MS = 10000;
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 export function useAirdropData(account?: string) {
     const [claimCount, setClaimCount] = useState<number | null>(null);
@@ -90,12 +90,12 @@ export function useAirdropData(account?: string) {
             const invitees = Array.isArray(result[0]) ? result[0] : [];
             const used = Array.isArray(result[1]) ? result[1] : [];
             const parsedSlots = invitees?.map((inv, idx) => ({
-                invitee: inv && inv !== ZeroAddress ? inv : null,
+                invitee: inv && inv.toLowerCase() !== ZERO_ADDRESS ? inv : null,
                 used: Boolean(used?.[idx]),
             })) ?? [];
 
             setHasClaimed(Boolean(claimed));
-            setInvitedBy((inviter as string) === ZeroAddress ? null : (inviter as string));
+            setInvitedBy((inviter as string).toLowerCase() === ZERO_ADDRESS ? null : (inviter as string));
             setInvitesCreated(Number(created));
             setClaimCount(Number(count));
             setFreeClaims(Number(free));
@@ -157,7 +157,7 @@ export function useAirdropData(account?: string) {
         const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
         try {
-            const res = await fetch(`${API_BASE}/proof/${target}`, {
+            const res = await fetch(`${API_BASE}/proof/${encodeURIComponent(target)}`, {
                 signal: controller.signal,
             });
             
@@ -216,7 +216,7 @@ export function useAirdropData(account?: string) {
 
                 const claimed = Boolean(claimedOnChain);
                 setHasClaimed(claimed);
-                const inviterAddr = inviterOnChain === ZeroAddress ? null : inviterOnChain;
+                const inviterAddr = (inviterOnChain as string).toLowerCase() === ZERO_ADDRESS ? null : inviterOnChain;
                 setInvitedBy(inviterAddr);
 
                 if (claimed) {
@@ -231,11 +231,10 @@ export function useAirdropData(account?: string) {
         } catch (err) {
             if (!isMountedRef.current) return;
             if (err instanceof Error && err.name === 'AbortError') {
-                toast.error("Request timeout - please try again");
-            } else {
-                logger.error("Failed to fetch proof", err);
-                toast.error("Failed to fetch proof.");
+                return;
             }
+            logger.error("Failed to fetch proof", err);
+            toast.error("Failed to fetch proof.");
         } finally {
             clearTimeout(timeoutId);
             if (isMountedRef.current) {
