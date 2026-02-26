@@ -51,8 +51,7 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
 
     if total > MAX_ADDRESSES {
         return Err(format!(
-            "Input file contains {} addresses, which exceeds the maximum of {}",
-            total, MAX_ADDRESSES
+            "Input file contains {total} addresses, which exceeds the maximum of {MAX_ADDRESSES}"
         )
         .into());
     }
@@ -78,7 +77,7 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
         }
     }
 
-    addresses.sort();
+    addresses.sort_unstable();
     let original_count = addresses.len();
     addresses.dedup();
     let duplicates_removed = original_count - addresses.len();
@@ -106,7 +105,7 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
         addresses_path.display()
     );
     if duplicates_removed > 0 {
-        println!("Removed {} duplicate addresses", duplicates_removed);
+        println!("Removed {duplicates_removed} duplicate addresses");
     }
     println!(
         "Built {} Merkle layers (root: 0x{root_hex}) into {}",

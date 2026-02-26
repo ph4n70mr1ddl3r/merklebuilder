@@ -42,9 +42,9 @@ fn main() {
         process::exit(1);
     }
 
-    println!("✓ Generated {} test accounts to {}", count, output_path);
-    println!("  Seed: {} (deterministic)", seed);
-    eprintln!("⚠️  Remember to add '{}' to .gitignore", output_path);
+    println!("✓ Generated {count} test accounts to {output_path}");
+    println!("  Seed: {seed} (deterministic)");
+    eprintln!("⚠️  Remember to add '{output_path}' to .gitignore");
 }
 
 fn parse_args() -> Result<(usize, String, u64), String> {

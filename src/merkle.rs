@@ -28,13 +28,13 @@ pub enum MerkleError {
 impl fmt::Display for MerkleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MerkleError::InvalidAddress(msg) => write!(f, "Invalid address: {}", msg),
-            MerkleError::InvalidHex(msg) => write!(f, "Invalid hex: {}", msg),
+            MerkleError::InvalidAddress(msg) => write!(f, "Invalid address: {msg}"),
+            MerkleError::InvalidHex(msg) => write!(f, "Invalid hex: {msg}"),
             MerkleError::AddressNotFound => write!(f, "Address not found in addresses.bin"),
-            MerkleError::InvalidLayer(msg) => write!(f, "Invalid layer: {}", msg),
-            MerkleError::FileIo(msg) => write!(f, "File I/O error: {}", msg),
-            MerkleError::MissingLayer(msg) => write!(f, "Missing layer: {}", msg),
-            MerkleError::CorruptedData(msg) => write!(f, "Corrupted data: {}", msg),
+            MerkleError::InvalidLayer(msg) => write!(f, "Invalid layer: {msg}"),
+            MerkleError::FileIo(msg) => write!(f, "File I/O error: {msg}"),
+            MerkleError::MissingLayer(msg) => write!(f, "Missing layer: {msg}"),
+            MerkleError::CorruptedData(msg) => write!(f, "Corrupted data: {msg}"),
             MerkleError::IndexOutOfBounds {
                 level,
                 index,
@@ -42,11 +42,10 @@ impl fmt::Display for MerkleError {
             } => {
                 write!(
                     f,
-                    "Index {} out of bounds at level {} (count: {})",
-                    index, level, count
+                    "Index {index} out of bounds at level {level} (count: {count})"
                 )
             }
-            MerkleError::Internal(msg) => write!(f, "Internal error: {}", msg),
+            MerkleError::Internal(msg) => write!(f, "Internal error: {msg}"),
         }
     }
 }
@@ -107,8 +106,7 @@ pub fn build_proof(db_dir: &Path, address_str: &str) -> Result<ProofResult, Merk
 
     if total > MAX_ADDRESSES {
         return Err(MerkleError::InvalidLayer(format!(
-            "Address count {} exceeds maximum of {}",
-            total, MAX_ADDRESSES
+            "Address count {total} exceeds maximum of {MAX_ADDRESSES}"
         )));
     }
 
@@ -240,6 +238,12 @@ pub fn hash_pair(left: &[u8; HASH_SIZE], right: &[u8; HASH_SIZE]) -> [u8; HASH_S
     hasher.finalize().into()
 }
 
+/// Returns the number of nodes (hashes) in a layer file.
+///
+/// # Errors
+/// Returns an error if the file cannot be opened or read, or if the file size
+/// is not a multiple of `HASH_SIZE` (32 bytes).
+#[allow(clippy::cast_possible_truncation)]
 pub fn layer_node_count(path: &Path) -> Result<usize, MerkleError> {
     let len = File::open(path)
         .and_then(|f| f.metadata())
@@ -254,6 +258,12 @@ pub fn layer_node_count(path: &Path) -> Result<usize, MerkleError> {
     Ok((len / HASH_SIZE as u64) as usize)
 }
 
+/// Reads a single 32-byte hash from a layer file at the specified index.
+///
+/// # Errors
+/// Returns an error if the file cannot be opened, seek fails, or read fails.
+/// Also returns an error if the index would cause an overflow when calculating
+/// the byte offset.
 pub fn read_node(path: &Path, index: usize) -> Result<[u8; HASH_SIZE], MerkleError> {
     let mut file = File::open(path)
         .map_err(|e| MerkleError::FileIo(format!("Unable to open {}: {e}", path.display())))?;
@@ -272,6 +282,17 @@ pub fn read_node(path: &Path, index: usize) -> Result<[u8; HASH_SIZE], MerkleErr
     Ok(buf)
 }
 
+/// Performs a binary search for an address in the sorted addresses.bin file.
+///
+/// Returns `Some((index, lookups, total))` if found, where `index` is the
+/// position in the file, `lookups` is the number of binary search steps,
+/// and `total` is the total number of addresses.
+///
+/// # Errors
+/// Returns an error if the file cannot be opened or read, if the file size
+/// is not a multiple of `ADDRESS_SIZE` (20 bytes), or if the address count
+/// exceeds `MAX_ADDRESSES`.
+#[allow(clippy::cast_possible_truncation)]
 pub fn find_address_index(
     path: &Path,
     target: &[u8; ADDRESS_SIZE],
@@ -294,8 +315,7 @@ pub fn find_address_index(
 
     if total > MAX_ADDRESSES {
         return Err(MerkleError::CorruptedData(format!(
-            "Address count {} exceeds maximum of {}",
-            total, MAX_ADDRESSES
+            "Address count {total} exceeds maximum of {MAX_ADDRESSES}"
         )));
     }
 
@@ -374,10 +394,11 @@ pub fn ensure_db_present(db_dir: &Path) -> Result<(), MerkleError> {
     Ok(())
 }
 
+#[must_use]
 pub fn available_layers(db_dir: &Path) -> Vec<PathBuf> {
     let mut layers = Vec::new();
     for idx in 0usize..=MAX_LAYERS {
-        let filename = format!("layer{:02}.bin", idx);
+        let filename = format!("layer{idx:02}.bin");
         let path = db_dir.join(filename);
         if path.exists() {
             layers.push(path);
