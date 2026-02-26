@@ -2,7 +2,7 @@
 
 import confetti from 'canvas-confetti';
 
-export function fireConfetti() {
+function fireConfetti() {
     // First burst - center
     confetti({
         particleCount: 100,

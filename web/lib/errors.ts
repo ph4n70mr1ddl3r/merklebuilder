@@ -2,7 +2,7 @@
  * Error handling utilities for better UX
  */
 
-export const ERROR_MESSAGES = {
+const ERROR_MESSAGES = {
   USER_DENIED: "You rejected the transaction. Click to try again.",
   INSUFFICIENT_GAS: "Not enough ETH for gas fees. Add funds to your wallet.",
   NETWORK_ERROR: "Network connection issue. Check your internet and retry.",
@@ -15,8 +15,6 @@ export const ERROR_MESSAGES = {
   INVITE_REQUIRED: "An invitation is required to claim. Ask a friend who claimed.",
   NO_SLOTS: "All invitation slots are full. Revoke unused invitations first.",
 } as const;
-
-export type ErrorCode = keyof typeof ERROR_MESSAGES;
 
 /**
  * Parse Web3 error and return user-friendly message

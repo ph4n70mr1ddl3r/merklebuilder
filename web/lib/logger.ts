@@ -53,7 +53,7 @@ export const logger = createLogger();
 /**
  * Helper to extract error message safely
  */
-export function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown): string {
     if (error instanceof Error) {
         return error.message;
     }

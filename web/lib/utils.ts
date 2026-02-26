@@ -1,14 +1,5 @@
-import { type ClassValue, clsx } from "clsx";
 import { getAddress } from "ethers";
 import type { ProofResponse } from "./types";
-
-/**
- * Utility function to merge class names
- * Simplified version without tailwind-merge dependency
- */
-export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
-}
 
 /**
  * Normalize an Ethereum address to checksummed format

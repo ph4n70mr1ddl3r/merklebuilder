@@ -1,15 +1,13 @@
-export type Tone = "info" | "good" | "bad";
-
-export type InvitationSlot = {
-    invitee: string | null;
-    used: boolean;
-};
-
-export type ProofNode = {
+type ProofNode = {
     hash: string;
     side?: "left" | "right";
     level?: number;
     sibling_index?: number;
+};
+
+export type InvitationSlot = {
+    invitee: string | null;
+    used: boolean;
 };
 
 export type ProofResponse = {
@@ -30,14 +28,4 @@ export type ContractState = {
     invitedBy: string | null;
     invitesCreated: number;
     invitationSlots: InvitationSlot[];
-};
-
-export type MarketReserves = {
-    reserveEth: bigint;
-    reserveDemo: bigint;
-};
-
-export type StatusMessage = {
-    tone: Tone;
-    message: string;
 };

@@ -1,7 +1,7 @@
 import { parseAbi } from "viem";
 
 // Re-export types from centralized types file
-export type { ProofNode, ProofResponse } from "./types";
+export type { ProofResponse } from "./types";
 
 // Re-export environment variables from validated env
 export { API_BASE, CONTRACT_ADDRESS, CHAIN_ID, CHAIN_NAME } from "./env";
