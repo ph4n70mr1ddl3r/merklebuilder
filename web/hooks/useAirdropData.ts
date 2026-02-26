@@ -171,7 +171,15 @@ export function useAirdropData(account?: string) {
             }
 
             const rawData = await res.text();
-            const data = JSON.parse(rawData);
+            let data: unknown;
+            try {
+                data = JSON.parse(rawData);
+            } catch {
+                toast.error("Invalid response from server");
+                setProof(null);
+                setHasCheckedEligibility(true);
+                return;
+            }
             const validatedData = ProofResponseSchema.parse(data);
 
             const proofAddress = normalizeAddress(validatedData.address);

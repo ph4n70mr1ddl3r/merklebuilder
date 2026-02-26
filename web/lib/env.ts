@@ -43,11 +43,11 @@ const env = validateEnv();
 
 const CHAIN_ID_NUM = Number(env.NEXT_PUBLIC_CHAIN_ID);
 if (!Number.isInteger(CHAIN_ID_NUM) || CHAIN_ID_NUM <= 0) {
-    throw new Error(`Invalid CHAIN_ID: ${env.NEXT_PUBLIC_CHAIN_ID}`);
+    logger.error(`Invalid CHAIN_ID: ${env.NEXT_PUBLIC_CHAIN_ID}, falling back to Sepolia`);
 }
 
+export const CHAIN_ID = Number.isInteger(CHAIN_ID_NUM) && CHAIN_ID_NUM > 0 ? CHAIN_ID_NUM : 11155111;
 export const API_BASE = env.NEXT_PUBLIC_API_BASE;
 export const CONTRACT_ADDRESS = env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-export const CHAIN_ID = CHAIN_ID_NUM;
 export const CHAIN_NAME = env.NEXT_PUBLIC_CHAIN_NAME;
 export const RPC_URL = env.NEXT_PUBLIC_RPC_URL;

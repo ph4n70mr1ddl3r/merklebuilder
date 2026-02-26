@@ -28,8 +28,13 @@ export function parseWeb3Error(error: unknown): string {
     (typeof error === 'string' ? error.toLowerCase() : '') ||
     '';
   
-  // User rejected transaction
-  if (message.includes('user rejected') || message.includes('user denied')) {
+  const errorCode = (error as { code?: number })?.code;
+  
+  if (errorCode === 4001) {
+    return ERROR_MESSAGES.USER_DENIED;
+  }
+  
+  if (message.includes('user rejected') || message.includes('user denied') || message.includes('rejected by user')) {
     return ERROR_MESSAGES.USER_DENIED;
   }
   

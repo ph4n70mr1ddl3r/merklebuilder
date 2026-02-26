@@ -214,12 +214,11 @@ pub fn parse_address(raw: &str) -> Result<[u8; ADDRESS_SIZE], MerkleError> {
 
 #[must_use]
 pub fn normalize_hex(raw: &str) -> String {
-    if raw.starts_with("0x") {
-        raw.to_string()
-    } else if let Some(stripped) = raw.strip_prefix("0X") {
-        format!("0x{stripped}")
+    let lower = raw.to_ascii_lowercase();
+    if lower.starts_with("0x") {
+        lower
     } else {
-        format!("0x{raw}")
+        format!("0x{lower}")
     }
 }
 
@@ -410,6 +409,7 @@ pub fn available_layers(db_dir: &Path) -> Vec<PathBuf> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -461,6 +461,8 @@ mod tests {
         assert_eq!(normalize_hex("0x1234"), "0x1234");
         assert_eq!(normalize_hex("1234"), "0x1234");
         assert_eq!(normalize_hex("0X1234"), "0x1234");
+        assert_eq!(normalize_hex("0XABcd"), "0xabcd");
+        assert_eq!(normalize_hex("ABcd"), "0xabcd");
     }
 
     #[test]

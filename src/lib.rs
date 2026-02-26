@@ -20,7 +20,7 @@ impl std::fmt::Display for EthereumAddressError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             EthereumAddressError::InvalidPublicKeyLength(len) => {
-                write!(f, "Unexpected public key length: {}", len)
+                write!(f, "Unexpected public key length: {len}")
             }
         }
     }
@@ -28,6 +28,12 @@ impl std::fmt::Display for EthereumAddressError {
 
 impl std::error::Error for EthereumAddressError {}
 
+/// Derives an Ethereum checksummed address from a secret key.
+///
+/// # Errors
+///
+/// Returns `EthereumAddressError::InvalidPublicKeyLength` if the public key
+/// is not the expected 65 bytes (uncompressed format).
 pub fn ethereum_address(secret_key: &SecretKey) -> Result<String, EthereumAddressError> {
     let public_key = secret_key.public_key();
     let encoded = public_key.to_encoded_point(false);
