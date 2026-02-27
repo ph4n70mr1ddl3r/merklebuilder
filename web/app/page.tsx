@@ -245,9 +245,8 @@ export default function HomePage() {
       clearProofCache(account);
       airdrop.setHasClaimed(true);
       setClaimError(null);
-      fireConfettiBurst();
-      await airdrop.refreshOnChain(account);
-      await market.refreshReserves(account);
+      const cleanup = fireConfettiBurst();
+      return () => cleanup();
     } catch (err) {
       logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
@@ -319,7 +318,7 @@ export default function HomePage() {
         args: [target as `0x${string}`],
         account: account as `0x${string}`,
       });
-      toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
+      toast.loading(`Tx sent: ${hash?.slice(0, 10) ?? 'pending'}…`, { id: toastId });
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash });
       }
@@ -362,7 +361,7 @@ export default function HomePage() {
         args: [slotIndex],
         account: account as `0x${string}`,
       });
-      toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
+      toast.loading(`Tx sent: ${hash?.slice(0, 10) ?? 'pending'}…`, { id: toastId });
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash });
       }
@@ -397,7 +396,7 @@ export default function HomePage() {
         account: account as `0x${string}`,
         value: maxEthIn,
       });
-      toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
+      toast.loading(`Tx sent: ${hash?.slice(0, 10) ?? 'pending'}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success("Swap confirmed. DEMO purchased.", { id: toastId });
       await market.refreshReserves(account);
@@ -429,7 +428,7 @@ export default function HomePage() {
         args: [demoAmount, minEthOut],
         account: account as `0x${string}`,
       });
-      toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
+      toast.loading(`Tx sent: ${hash?.slice(0, 10) ?? 'pending'}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success("Swap confirmed. ETH received.", { id: toastId });
       await market.refreshReserves(account);
@@ -462,41 +461,7 @@ export default function HomePage() {
         account: account as `0x${string}`,
         value: ethAmount,
       });
-      toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
-      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
-      toast.success("Swap confirmed. DEMO purchased.", { id: toastId });
-      await market.refreshReserves(account);
-      await airdrop.refreshOnChain(account);
-    } catch (err) {
-      logger.error("Buy error:", err);
-      const friendlyError = parseWeb3Error(err);
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span className="font-semibold">Buy failed</span>
-          <span className="text-sm">{friendlyError}</span>
-        </div>
-      );
-    } finally {
-      setTrading(false);
-    }
-  };
-
-  const handleReceiveExactEth = async (demoAmount: bigint, exactEthOut: bigint) => {
-    if (!account) return;
-    if (!(await ensureCorrectChain(chain?.id, switchChain, CHAIN_NAME))) return;
-    const effectiveSlippageBps = slippageBps ?? 100n;
-    try {
-      setTrading(true);
-      const toastId = toast.loading("Selling DEMO for ETH…");
-      const minOut = exactEthOut - (exactEthOut * effectiveSlippageBps) / 10000n;
-      const hash = await writeContract(wagmiConfig, {
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: DEMO_ABI,
-        functionName: "sellDemo",
-        args: [demoAmount, minOut > 0n ? minOut : 1n],
-        account: account as `0x${string}`,
-      });
-      toast.loading(`Tx sent: ${hash.slice(0, 10)}…`, { id: toastId });
+      toast.loading(`Tx sent: ${hash?.slice(0, 10) ?? 'pending'}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success("Swap confirmed. ETH received.", { id: toastId });
       await market.refreshReserves(account);

@@ -71,6 +71,7 @@ export function useMarketData(account?: string) {
     useEffect(() => {
         refreshReserves(account);
         const interval = setInterval(() => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
             refreshReserves(account);
         }, RESERVES_POLL_INTERVAL);
         return () => clearInterval(interval);

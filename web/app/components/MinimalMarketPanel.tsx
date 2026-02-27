@@ -78,7 +78,7 @@ export function MinimalMarketPanel({
     };
   }, [inputAmount, outputAmount, lastEdited]);
 
-  const { calculatedAmount, calculationError } = useMemo(() => {
+    const { calculatedAmount, calculationError } = useMemo(() => {
     if (!poolFunded || !poolHasDemo) {
       return { calculatedAmount: null, calculationError: null };
     }
@@ -100,10 +100,16 @@ export function MinimalMarketPanel({
 
       if (lastEdited === 'input') {
         if (isBuying) {
-          calculated = (amount * reserveDemo) / (reserveEth + amount);
+          if (reserveEth + amount === 0n) {
+            error = 'Invalid amount';
+          } else {
+            calculated = (amount * reserveDemo) / (reserveEth + amount);
+          }
         } else {
           if (amount > demoBalance) {
             error = 'Insufficient DEMO balance';
+          } else if (reserveDemo + amount === 0n) {
+            error = 'Invalid amount';
           } else {
             calculated = (amount * reserveEth) / (reserveDemo + amount);
           }
@@ -112,12 +118,16 @@ export function MinimalMarketPanel({
         if (isBuying) {
           if (amount >= reserveDemo) {
             error = 'Cannot buy more DEMO than pool reserve';
+          } else if (reserveDemo - amount === 0n) {
+            error = 'Invalid amount';
           } else {
             calculated = (amount * reserveEth) / (reserveDemo - amount);
           }
         } else {
           if (amount >= reserveEth) {
             error = 'Cannot receive more ETH than pool reserve';
+          } else if (reserveEth - amount === 0n) {
+            error = 'Invalid amount';
           } else {
             const demoNeeded = (amount * reserveDemo) / (reserveEth - amount);
             if (demoNeeded > demoBalance) {

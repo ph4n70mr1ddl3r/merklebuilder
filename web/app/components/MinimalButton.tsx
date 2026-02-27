@@ -1,19 +1,14 @@
-type MinimalButtonProps = {
+type MinimalButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
-  type?: 'button' | 'submit';
-  className?: string;
 };
 
 export function MinimalButton({
   children,
-  onClick,
   disabled = false,
   variant = 'primary',
-  type = 'button',
   className = '',
+  ...rest
 }: MinimalButtonProps) {
   const baseStyles = 'px-4 py-3 text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target';
   
@@ -25,10 +20,10 @@ export function MinimalButton({
 
   return (
     <button
-      type={type}
-      onClick={onClick}
+      type="button"
       disabled={disabled}
       className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+      {...rest}
     >
       {children}
     </button>

@@ -97,9 +97,10 @@ export function MinimalInvitesPanel({
           {normalizedSlots.map((slot, idx) => {
             const isPending = slot.invitee && !slot.used;
             const isUsed = slot.invitee && slot.used;
+            const key = slot.invitee ?? `empty-${idx}`;
             
             return (
-              <div key={idx} className="flex items-center justify-between p-3 border border-slate-800 rounded text-sm">
+              <div key={key} className="flex items-center justify-between p-3 border border-slate-800 rounded text-sm">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <span className="text-slate-500 w-12 shrink-0">#{idx + 1}</span>
                   {slot.invitee ? (

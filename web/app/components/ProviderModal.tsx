@@ -1,25 +1,36 @@
 'use client';
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import clsx from "clsx";
+
+type ConnectorInfo = { id: string; name: string; ready?: boolean };
 
 type ProviderModalProps = {
   open: boolean;
   onClose: () => void;
-  connectors: readonly any[];
+  connectors: readonly ConnectorInfo[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onConnect: () => void;
 };
 
 export function ProviderModal({ open, onClose, connectors, selectedId, onSelect, onConnect }: ProviderModalProps) {
+  const firstButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!open) return;
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    const timer = setTimeout(() => firstButtonRef.current?.focus(), 0);
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKey);
+      previousFocusRef.current?.focus();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -45,6 +56,7 @@ export function ProviderModal({ open, onClose, connectors, selectedId, onSelect,
             </h3>
           </div>
           <button
+            ref={firstButtonRef}
             onClick={onClose}
             className="rounded-full border border-white/10 px-3 py-1.5 text-sm text-slate-300 hover:-translate-y-0.5 min-h-[40px] active:bg-white/10"
           >
