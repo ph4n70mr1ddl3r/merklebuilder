@@ -75,7 +75,6 @@ export default function HomePage() {
 
   // Derived state
   const invitesRequired = airdrop.claimCount !== null ? airdrop.claimCount >= airdrop.freeClaims : false;
-  const invitesOpen = airdrop.claimCount !== null ? airdrop.claimCount >= airdrop.freeClaims : false;
   const slippageBps = useMemo(() => parseSlippageBps(slippage), [slippage]);
   const freeClaimsRemaining = useMemo(() => {
     if (airdrop.claimCount === null) return null;
@@ -267,7 +266,7 @@ export default function HomePage() {
       toast.error("Enter a valid Ethereum address to invite.");
       return;
     }
-    if (!invitesOpen) {
+    if (!invitesRequired) {
       toast.error(`Invitations unlock after the first ${airdrop.freeClaims} claims.`);
       return;
     }
@@ -517,7 +516,7 @@ export default function HomePage() {
       ? `${freeClaimsRemaining} open claims left before invites lock in.`
       : "Fetch your proof to see your lane.",
     invitesText: `${airdrop.invitesCreated} / ${airdrop.maxInvites} slots used`,
-    invitesHint: invitesOpen ? "Invite phase is live; reserve slots before they're gone." : "Invite phase opens after open-claim window fills.",
+    invitesHint: invitesRequired ? "Invite phase is live; reserve slots before they're gone." : "Invite phase opens after open-claim window fills.",
     marketText: poolFunded && poolHasDemo ? `${priceEthPerDemo} ETH / DEMO` : "Waiting for liquidity",
     reserveText: `Reserves: ${formatToken(market.reserveEth)} ETH · ${formatToken(market.reserveDemo)} DEMO`,
   };
@@ -562,7 +561,7 @@ export default function HomePage() {
         <MinimalInvitesPanel
           account={account}
           hasClaimed={airdrop.hasClaimed}
-          invitesOpen={invitesOpen}
+          invitesOpen={invitesRequired}
           maxInvites={airdrop.maxInvites}
           invitesCreated={airdrop.invitesCreated}
           normalizedSlots={normalizedSlots}

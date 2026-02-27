@@ -53,6 +53,7 @@ fn parse_args() -> Result<(String, String), String> {
 fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(input_path)?;
     let metadata = file.metadata()?;
+    #[allow(clippy::cast_possible_truncation)]
     let estimated_capacity = (metadata.len() as usize / 43).max(1024);
     let reader = BufReader::new(file);
 
