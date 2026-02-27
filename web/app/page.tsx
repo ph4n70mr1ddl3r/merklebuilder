@@ -144,7 +144,7 @@ export default function HomePage() {
       const stored = localStorage.getItem("demo-slippage");
       if (stored) setSlippage(stored);
     } catch (err) {
-      console.warn("Failed to read slippage from localStorage:", err);
+      logger.warn("Failed to read slippage from localStorage:", err);
     }
   }, []);
 
@@ -153,7 +153,7 @@ export default function HomePage() {
     try {
       localStorage.setItem("demo-slippage", slippage);
     } catch (err) {
-      console.warn("Failed to write slippage to localStorage:", err);
+      logger.warn("Failed to write slippage to localStorage:", err);
     }
   }, [slippage]);
 
@@ -245,8 +245,7 @@ export default function HomePage() {
       clearProofCache(account);
       airdrop.setHasClaimed(true);
       setClaimError(null);
-      const cleanup = fireConfettiBurst();
-      return () => cleanup();
+      fireConfettiBurst();
     } catch (err) {
       logger.error("Claim error:", err);
       const friendlyError = parseWeb3Error(err);
@@ -463,15 +462,15 @@ export default function HomePage() {
       });
       toast.loading(`Tx sent: ${hash?.slice(0, 10) ?? 'pending'}…`, { id: toastId });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
-      toast.success("Swap confirmed. ETH received.", { id: toastId });
+      toast.success("Swap confirmed. DEMO received.", { id: toastId });
       await market.refreshReserves(account);
       await airdrop.refreshOnChain(account);
     } catch (err) {
-      logger.error("Sell error:", err);
+      logger.error("Buy error:", err);
       const friendlyError = parseWeb3Error(err);
       toast.error(
         <div className="flex flex-col gap-1">
-          <span className="font-semibold">Sell failed</span>
+          <span className="font-semibold">Buy failed</span>
           <span className="text-sm">{friendlyError}</span>
         </div>
       );

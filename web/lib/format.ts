@@ -3,7 +3,7 @@ import { formatEther } from "viem";
 export const shorten = (addr?: string | null) => {
   if (!addr) return "";
   if (addr.length < 10) return addr;
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 };
 
 export const formatToken = (value: bigint, digits = 4) => {

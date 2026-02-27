@@ -6,7 +6,7 @@ describe('format utilities', () => {
     describe('shorten', () => {
         it('should shorten Ethereum addresses correctly', () => {
             const address = '0x1234567890abcdef1234567890abcdef12345678';
-            expect(shorten(address)).toBe('0x1234…5678');
+            expect(shorten(address)).toBe('0x1234...5678');
         });
 
         it('should handle null addresses', () => {

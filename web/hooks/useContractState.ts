@@ -1,11 +1,10 @@
 import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ZeroAddress } from "ethers";
 import { readContract } from "wagmi/actions";
 import { wagmiConfig } from "../lib/wagmi";
 import { CONTRACT_ADDRESS } from "../lib/env";
 import { DEMO_ABI } from "../lib/airdrop";
-import { CONTRACT_POLL_INTERVAL } from "../lib/constants";
+import { CONTRACT_POLL_INTERVAL, ZERO_ADDRESS } from "../lib/constants";
 import { logger } from "../lib/logger";
 import type { ContractState } from "../lib/types";
 
@@ -63,13 +62,13 @@ export function useContractState(account?: string) {
             const used = Array.isArray(result[1]) ? result[1] : [];
 
             const parsedSlots = invitees.map((inv, idx) => ({
-                invitee: inv && inv !== ZeroAddress ? inv : null,
+                invitee: inv && inv !== ZERO_ADDRESS ? inv : null,
                 used: Boolean(used?.[idx]),
             }));
 
             return {
                 hasClaimed: Boolean(claimed),
-                invitedBy: (inviter as string) === ZeroAddress ? null : (inviter as string),
+                invitedBy: (inviter as string) === ZERO_ADDRESS ? null : (inviter as string),
                 invitesCreated: Number(created),
                 claimCount: Number(count),
                 freeClaims: Number(free),
