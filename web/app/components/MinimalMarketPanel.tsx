@@ -5,6 +5,7 @@ import { formatEther, parseEther } from 'viem';
 import { formatToken } from '../../lib/format';
 import { MinimalButton } from './MinimalButton';
 import { INPUT_DEBOUNCE_MS } from '../../lib/constants';
+import { logger } from '../../lib/logger';
 
 type MinimalMarketPanelProps = {
   account?: string;
@@ -193,7 +194,7 @@ export function MinimalMarketPanel({
       setInputAmount('');
       setOutputAmount('');
     } catch (err) {
-      console.error(err);
+      logger.error('Trade failed', err);
     }
   };
 

@@ -8,10 +8,9 @@ import { logger } from '../lib/logger';
 import { getCachedProof, setCachedProof, normalizeAddress } from '../lib/utils';
 import { ProofResponseSchema } from '../lib/validators';
 import { validateProofOnChain } from '../lib/proofValidation';
+import { API_TIMEOUT_MS, ZERO_ADDRESS } from '../lib/constants';
 
 type GetInvitationsResult = readonly [readonly string[], readonly boolean[]];
-const API_TIMEOUT_MS = 10000;
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 export function useAirdropData(account?: string) {
     const [claimCount, setClaimCount] = useState<number | null>(null);

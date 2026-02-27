@@ -4,6 +4,7 @@ import { readContract } from 'wagmi/actions';
 import { wagmiConfig } from '../lib/wagmi';
 import { CONTRACT_ADDRESS, DEMO_ABI } from '../lib/airdrop';
 import { logger } from '../lib/logger';
+import { RESERVES_POLL_INTERVAL } from '../lib/constants';
 
 export function useMarketData(account?: string) {
     const [reserveEth, setReserveEth] = useState<bigint>(0n);
@@ -71,7 +72,7 @@ export function useMarketData(account?: string) {
         refreshReserves(account);
         const interval = setInterval(() => {
             refreshReserves(account);
-        }, 15000);
+        }, RESERVES_POLL_INTERVAL);
         return () => clearInterval(interval);
     }, [account, refreshReserves]);
 

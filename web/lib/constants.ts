@@ -17,3 +17,7 @@ export const INPUT_DEBOUNCE_MS = 150;
 // Default values
 export const DEFAULT_SLIPPAGE = "1.0"; // 1% slippage
 export const MIN_OUTPUT_SAFE = 1n; // Minimum output to prevent 0
+
+// API constants
+export const API_TIMEOUT_MS = 10000; // 10 seconds
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';

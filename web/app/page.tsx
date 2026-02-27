@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ZeroAddress, getAddress, isAddress } from "ethers";
+import { isAddress, getAddress } from "ethers";
 import { parseEther, formatEther } from "viem";
 import { toast } from "sonner";
 import { CHAIN_ID, CHAIN_NAME, CONTRACT_ADDRESS, DEMO_ABI, API_BASE } from "../lib/airdrop";
@@ -23,9 +23,9 @@ import { addressSchema } from "../lib/validators";
 import { useAirdropData } from "../hooks/useAirdropData";
 import { useMarketData } from "../hooks/useMarketData";
 import { logger } from "../lib/logger";
-import { clearProofCache } from "../lib/utils";
+import { clearProofCache, copyToClipboardFallback } from "../lib/utils";
 
-import { MAX_SLIPPAGE_PERCENT, SLIPPAGE_BPS_MULTIPLIER, MAX_SLIPPAGE_BPS, DECIMAL_PLACES } from "../lib/constants";
+import { MAX_SLIPPAGE_PERCENT, SLIPPAGE_BPS_MULTIPLIER, MAX_SLIPPAGE_BPS, DECIMAL_PLACES, ZERO_ADDRESS } from "../lib/constants";
 
 const parseSlippageBps = (value: string): bigint | null => {
   const trimmed = value.trim();
@@ -187,15 +187,15 @@ export default function HomePage() {
       toast.error("No wallet connector available.");
       return;
     }
+    const toastId = toast.loading("Connecting wallet…");
     try {
-      const toastId = toast.loading("Connecting wallet…");
       await connect({ connector, chainId: CHAIN_ID });
       setShowProviderModal(false);
       toast.success("Wallet connected successfully!", { id: toastId });
     } catch (err) {
       logger.error("Wallet connection error:", err);
       const message = err instanceof Error ? err.message : "Unable to connect wallet.";
-      toast.error(message);
+      toast.error(message, { id: toastId });
     }
   };
 
@@ -219,7 +219,7 @@ export default function HomePage() {
       toast.error("Enter a valid recipient address.");
       return;
     }
-    if (recipientAddr === ZeroAddress) {
+    if (recipientAddr === ZERO_ADDRESS) {
       toast.error("Cannot send to zero address.");
       return;
     }
@@ -314,7 +314,7 @@ export default function HomePage() {
         toast.error("That address has already claimed.");
         return;
       }
-      if (existingInviter !== ZeroAddress) {
+      if (existingInviter !== ZERO_ADDRESS) {
         toast.error("That address is already invited.");
         return;
       }
@@ -534,18 +534,7 @@ export default function HomePage() {
   const copyToClipboard = async (value: string, key: string) => {
     if (!value) return;
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(value);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = value;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-      }
+      await copyToClipboardFallback(value);
       setCopiedKey(key);
       if (copiedTimeoutRef.current) {
         clearTimeout(copiedTimeoutRef.current);
@@ -561,18 +550,7 @@ export default function HomePage() {
     try {
       const baseUrl = window.location.origin + window.location.pathname;
       const inviteUrl = `${baseUrl}?invite=${account}`;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(inviteUrl);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = inviteUrl;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-      }
+      await copyToClipboardFallback(inviteUrl);
       toast.success("Invite link copied!");
       setCopiedKey("invite-link");
       if (copiedTimeoutRef.current) {

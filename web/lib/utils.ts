@@ -99,3 +99,18 @@ export function clearProofCache(address?: string): void {
     keysToRemove.forEach((key) => localStorage.removeItem(key));
   }
 }
+
+export async function copyToClipboardFallback(value: string): Promise<void> {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(value);
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+  }
+}
