@@ -81,6 +81,7 @@ export function MinimalWalletPanel({
               onClick={copyAddress}
               className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-sm text-slate-300 transition hover:bg-slate-700 hover:text-slate-100 shrink-0 touch-target"
               title="Copy address"
+              aria-label="Copy address to clipboard"
             >
               {copied ? '✓' : '📋'}
             </button>

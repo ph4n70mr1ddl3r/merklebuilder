@@ -279,7 +279,11 @@ async fn proof(
     Path(address): Path<String>,
     State(state): State<AppState>,
 ) -> Result<Json<ProofResponse>, ApiError> {
-    let proof = build_proof(&state.db_dir, &address).map_err(|e| classify_error(&e))?;
+    let db_dir = Arc::clone(&state.db_dir);
+    let proof = tokio::task::spawn_blocking(move || build_proof(&db_dir, &address))
+        .await
+        .map_err(|e| ApiError::Internal(format!("spawn_blocking error: {e}")))?
+        .map_err(|e| classify_error(&e))?;
     Ok(Json(proof.into()))
 }
 

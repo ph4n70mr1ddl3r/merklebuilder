@@ -51,7 +51,37 @@ fn parse_args() -> Result<(String, String), String> {
 }
 
 fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let total = count_non_empty_lines(input_path)?;
+    let file = File::open(input_path)?;
+    let metadata = file.metadata()?;
+    let estimated_capacity = (metadata.len() as usize / 43).max(1024);
+    let reader = BufReader::new(file);
+
+    let mut addresses = Vec::with_capacity(estimated_capacity);
+    let mut total = 0usize;
+
+    let update_every;
+    let progress;
+    {
+        let estimated_total = estimated_capacity;
+        update_every = progress_update_interval(estimated_total);
+        progress = build_progress(estimated_total as u64);
+    }
+
+    for (idx, line) in reader.lines().enumerate() {
+        let line = line?;
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let addr = parse_address(trimmed).map_err(|e| format!("Line {}: {}", idx + 1, e))?;
+        addresses.push(addr);
+        total += 1;
+
+        if total.is_multiple_of(update_every) {
+            progress.set_position(total as u64);
+        }
+    }
+
     if total == 0 {
         return Err("Input file contained no addresses".into());
     }
@@ -63,26 +93,8 @@ fn convert_file(input_path: &str, output_dir: &str) -> Result<(), Box<dyn std::e
         .into());
     }
 
-    let file = File::open(input_path)?;
-    let reader = BufReader::new(file);
-    let progress = build_progress(total as u64);
-    let update_every = progress_update_interval(total);
-
-    let mut addresses = Vec::new();
-    for (idx, line) in reader.lines().enumerate() {
-        let line = line?;
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        let addr = parse_address(trimmed).map_err(|e| format!("Line {}: {}", idx + 1, e))?;
-        addresses.push(addr);
-
-        let processed = addresses.len();
-        if processed % update_every == 0 || processed == total {
-            progress.set_position(processed as u64);
-        }
-    }
+    progress.set_length(total as u64);
+    progress.set_position(total as u64);
 
     addresses.sort_unstable();
     let original_count = addresses.len();
@@ -199,7 +211,7 @@ fn build_layers(
             next.push(hash_pair(&chunk[0], &right));
             done = done.saturating_add(1);
             if let Some(p) = &progress {
-                if done % update_every == 0 || done == total_hashes {
+                if done.is_multiple_of(update_every) || done == total_hashes {
                     p.set_position(done as u64);
                 }
             }
@@ -223,19 +235,6 @@ fn total_hash_ops(mut count: usize) -> usize {
         count = hashes;
     }
     total
-}
-
-fn count_non_empty_lines(path: &str) -> Result<usize, Box<dyn std::error::Error>> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let mut count = 0usize;
-    for line in reader.lines() {
-        let line = line?;
-        if !line.trim().is_empty() {
-            count = count.saturating_add(1);
-        }
-    }
-    Ok(count)
 }
 
 #[cfg(test)]
@@ -271,35 +270,21 @@ mod tests {
     }
 
     #[test]
-    fn test_count_non_empty_lines_empty_file() {
+    fn test_convert_file_empty() {
         let mut temp = NamedTempFile::new().unwrap();
         temp.write_all(b"").unwrap();
-        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
-        assert_eq!(count, 0);
+        let result = convert_file(temp.path().to_str().unwrap(), "test_out");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no addresses"));
     }
 
     #[test]
-    fn test_count_non_empty_lines_only_whitespace() {
+    fn test_convert_file_only_whitespace() {
         let mut temp = NamedTempFile::new().unwrap();
         temp.write_all(b"   \n\n\t\n   ").unwrap();
-        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
-        assert_eq!(count, 0);
-    }
-
-    #[test]
-    fn test_count_non_empty_lines_mixed() {
-        let mut temp = NamedTempFile::new().unwrap();
-        temp.write_all(b"line1\n\n  line2  \n\nline3").unwrap();
-        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
-        assert_eq!(count, 3);
-    }
-
-    #[test]
-    fn test_count_non_empty_lines_with_addresses() {
-        let mut temp = NamedTempFile::new().unwrap();
-        temp.write_all(b"0x1234567890123456789012345678901234567890\n\n0xabcd567890123456789012345678901234567890").unwrap();
-        let count = count_non_empty_lines(temp.path().to_str().unwrap()).unwrap();
-        assert_eq!(count, 2);
+        let result = convert_file(temp.path().to_str().unwrap(), "test_out");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no addresses"));
     }
 
     #[test]

@@ -238,9 +238,10 @@ export function MinimalMarketPanel({
         <div className="space-y-4">
           {/* Input */}
           <div>
-            <label className="block text-sm text-slate-400 mb-2">You pay</label>
+            <label htmlFor="trade-input" className="block text-sm text-slate-400 mb-2">You pay</label>
             <div className="relative">
               <input
+                id="trade-input"
                 type="text"
                 inputMode="decimal"
                 value={inputAmount}
@@ -286,9 +287,10 @@ export function MinimalMarketPanel({
 
           {/* Output */}
           <div>
-            <label className="block text-sm text-slate-400 mb-2">You receive</label>
+            <label htmlFor="trade-output" className="block text-sm text-slate-400 mb-2">You receive</label>
             <div className="relative">
               <input
+                id="trade-output"
                 type="text"
                 inputMode="decimal"
                 value={outputAmount}
@@ -307,7 +309,7 @@ export function MinimalMarketPanel({
 
           {/* Slippage */}
           <div>
-            <label className="block text-sm text-slate-400 mb-2">Slippage (%)</label>
+            <label htmlFor="slippage-input" className="block text-sm text-slate-400 mb-2">Slippage (%)</label>
             <div className="flex flex-wrap gap-2">
               {['0.5', '1.0', '2.0'].map((preset) => (
                 <button
@@ -323,6 +325,7 @@ export function MinimalMarketPanel({
                 </button>
               ))}
               <input
+                id="slippage-input"
                 type="text"
                 inputMode="decimal"
                 value={slippage}

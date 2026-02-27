@@ -37,6 +37,7 @@ contract DemoAirdrop {
     uint256 public claimCount;
     uint256 public reserveETH;
     uint256 public reserveDEMO;
+    uint256 public constant MIN_RESERVE_ETH = 0.01 ether;
 
     bool private locked;
 
@@ -47,6 +48,7 @@ contract DemoAirdrop {
     event InvitationRevoked(address indexed inviter, address indexed invitee, uint8 slot);
     event ReferralPaid(address indexed invitee, address indexed referrer, uint256 amount, uint256 level);
     event Swap(address indexed sender, bool ethForDemo, uint256 amountIn, uint256 amountOut, uint256 newReserveEth, uint256 newReserveDemo);
+    event Deposit(address indexed from, uint256 amount);
 
     modifier nonReentrant() {
         require(!locked, "DEMO: reentrancy");
@@ -66,6 +68,7 @@ contract DemoAirdrop {
     /// @notice Accept direct ETH to seed or grow the AMM reserves.
     receive() external payable {
         reserveETH += msg.value;
+        emit Deposit(msg.sender, msg.value);
     }
 
     // --- ERC20 ---
@@ -284,13 +287,14 @@ contract DemoAirdrop {
     function sellDemo(uint256 amountIn, uint256 minAmountOut) external nonReentrant returns (uint256 amountOut) {
         amountOut = previewSell(amountIn);
         require(amountOut >= minAmountOut, "DEMO: slippage");
+        require(reserveETH - amountOut >= MIN_RESERVE_ETH, "DEMO: reserve too low");
         // Pull tokens in before updating reserves/paying ETH out.
         _transfer(msg.sender, address(this), amountIn);
 
         reserveDEMO += amountIn;
         reserveETH -= amountOut;
 
-        (bool ok, ) = msg.sender.call{value: amountOut}("");
+        (bool ok, ) = msg.sender.call{value: amountOut, gas: 30000}("");
         require(ok, "DEMO: ETH transfer failed");
 
         emit Swap(msg.sender, false, amountIn, amountOut, reserveETH, reserveDEMO);

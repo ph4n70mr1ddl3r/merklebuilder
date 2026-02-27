@@ -133,8 +133,9 @@ export function MinimalInvitesPanel({
 
         {/* Create Invite */}
         <div className="space-y-3">
-          <label className="block text-sm text-slate-400">Invitee Address</label>
+          <label htmlFor="invitee-address" className="block text-sm text-slate-400">Invitee Address</label>
           <input
+            id="invitee-address"
             value={invitee}
             onChange={(e) => setInvitee(e.target.value)}
             placeholder="0x..."

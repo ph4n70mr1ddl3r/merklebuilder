@@ -2,9 +2,11 @@
 
 import confetti from 'canvas-confetti';
 
+const CONFETTI_DURATION = 2000;
+const CONFETTI_INTERVAL = 250;
+
 export function fireConfettiBurst(): () => void {
-    const duration = 2000;
-    const animationEnd = Date.now() + duration;
+    const animationEnd = Date.now() + CONFETTI_DURATION;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
 
     function randomInRange(min: number, max: number) {
@@ -24,7 +26,7 @@ export function fireConfettiBurst(): () => void {
             return clearInterval(interval);
         }
 
-        const particleCount = 50 * (timeLeft / duration);
+        const particleCount = 50 * (timeLeft / CONFETTI_DURATION);
 
         confetti({
             ...defaults,
@@ -38,10 +40,14 @@ export function fireConfettiBurst(): () => void {
             origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
             colors: ['#34d399', '#22d3ee', '#a78bfa', '#fbbf24', '#f472b6'],
         });
-    }, 250);
+    }, CONFETTI_INTERVAL);
 
-    return () => {
+    const cleanup = () => {
         cancelled = true;
         clearInterval(interval);
     };
+
+    setTimeout(cleanup, CONFETTI_DURATION + CONFETTI_INTERVAL);
+
+    return cleanup;
 }
