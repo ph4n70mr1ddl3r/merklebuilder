@@ -49,9 +49,9 @@ export const ProofResponseSchema = z.object({
     proof: z.array(
         z.object({
             hash: z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid hash format"),
-            side: z.enum(["left", "right"]).optional(),
-            level: z.number().int().nonnegative().optional(),
-            sibling_index: z.number().int().nonnegative().optional(),
+            side: z.string(),
+            level: z.number().int().nonnegative(),
+            sibling_index: z.number().int().nonnegative(),
         })
     ),
     proof_flags: z.array(z.boolean()),

@@ -199,7 +199,7 @@ fn build_layers(
             next.push(hash_pair(&chunk[0], &right));
             done = done.saturating_add(1);
             if let Some(p) = &progress {
-                if done.is_multiple_of(update_every) || done == total_hashes {
+                if done % update_every == 0 || done == total_hashes {
                     p.set_position(done as u64);
                 }
             }

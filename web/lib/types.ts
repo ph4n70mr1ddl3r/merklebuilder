@@ -1,8 +1,8 @@
 type ProofNode = {
     hash: string;
-    side?: "left" | "right";
-    level?: number;
-    sibling_index?: number;
+    side: string;
+    level: number;
+    sibling_index: number;
 };
 
 export type InvitationSlot = {

@@ -101,16 +101,25 @@ export function clearProofCache(address?: string): void {
 }
 
 export async function copyToClipboardFallback(value: string): Promise<void> {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    await navigator.clipboard.writeText(value);
-  } else {
-    const textArea = document.createElement("textarea");
-    textArea.value = value;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-9999px";
-    document.body.appendChild(textArea);
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+  } catch {
+    // Fall through to fallback
+  }
+  
+  const textArea = document.createElement("textarea");
+  textArea.value = value;
+  textArea.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0";
+  textArea.setAttribute("readonly", "");
+  document.body.appendChild(textArea);
+  try {
     textArea.select();
+    textArea.setSelectionRange(0, textArea.value.length);
     document.execCommand("copy");
+  } finally {
     document.body.removeChild(textArea);
   }
 }
