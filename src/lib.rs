@@ -1,3 +1,10 @@
+//! Merkle tree builder for Ethereum airdrops.
+//!
+//! This crate provides utilities for:
+//! - Generating Ethereum addresses from secret keys
+//! - Building and verifying Merkle proofs for airdrop claims
+//! - Converting address lists to binary Merkle tree format
+
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::SecretKey;
 use sha3::{Digest, Keccak256};

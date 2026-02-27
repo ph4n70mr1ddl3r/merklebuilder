@@ -1,3 +1,9 @@
+//! Generate test Ethereum accounts with deterministic private keys.
+//!
+//! Usage: `generate_test_accounts --count <n> --output <file> [--seed <n>]`
+//!
+//! **WARNING**: Never use these keys for production or commit them to version control.
+
 use std::env;
 use std::fs::File;
 use std::io::BufWriter;

@@ -1,3 +1,10 @@
+//! Convert a text file of Ethereum addresses to binary Merkle tree format.
+//!
+//! Usage: `txt_to_bin <input.txt> [output_dir]`
+//!
+//! Reads addresses from a text file (one per line), sorts them, removes duplicates,
+//! and builds a Merkle tree with layers stored as binary files.
+
 use std::env;
 use std::fs::{create_dir_all, File};
 use std::io::{BufRead, BufReader, BufWriter, Write};

@@ -1,3 +1,7 @@
+//! Generate random Ethereum addresses for testing.
+//!
+//! Usage: `address-generator <count> <output_file>`
+
 use std::env;
 use std::fs::File;
 use std::io::{BufWriter, Write};

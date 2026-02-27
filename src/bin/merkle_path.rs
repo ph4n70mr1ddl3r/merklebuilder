@@ -1,3 +1,9 @@
+//! CLI tool to fetch and display Merkle proof for an address.
+//!
+//! Usage: `merkle_path <address>`
+//!
+//! Reads from `MERKLE_DB_DIR` environment variable or `merkledb` directory by default.
+
 use std::env;
 use std::path::Path;
 use std::process;

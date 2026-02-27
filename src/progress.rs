@@ -1,3 +1,5 @@
+//! Progress bar utilities for long-running operations.
+
 use indicatif::{ProgressBar, ProgressStyle};
 
 #[must_use]

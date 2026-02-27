@@ -1,3 +1,16 @@
+//! Merkle proof API server.
+//!
+//! Provides a REST API for fetching Merkle proofs for Ethereum addresses.
+//!
+//! # Endpoints
+//! - `GET /health` - Health check
+//! - `GET /proof/{address}` - Get Merkle proof for an address
+//!
+//! # Environment Variables
+//! - `ALLOWED_ORIGINS` - CORS origins (comma-separated)
+//! - `RATE_LIMIT_PER_SECOND` - Rate limit per second
+//! - `RATE_LIMIT_BURST_SIZE` - Burst size for rate limiting
+
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;

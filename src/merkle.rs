@@ -1,3 +1,10 @@
+//! Merkle tree operations for airdrop proofs.
+//!
+//! This module provides functions for:
+//! - Building Merkle proofs for address inclusion
+//! - Parsing and validating Ethereum addresses
+//! - Reading and querying layer files
+
 use std::cmp::Ordering;
 use std::fmt;
 use std::fs::File;
