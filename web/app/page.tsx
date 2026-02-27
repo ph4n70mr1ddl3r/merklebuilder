@@ -25,23 +25,7 @@ import { useMarketData } from "../hooks/useMarketData";
 import { logger } from "../lib/logger";
 import { clearProofCache, copyToClipboardFallback } from "../lib/utils";
 
-import { MAX_SLIPPAGE_PERCENT, SLIPPAGE_BPS_MULTIPLIER, MAX_SLIPPAGE_BPS, DECIMAL_PLACES, ZERO_ADDRESS } from "../lib/constants";
-
-const parseSlippageBps = (value: string): bigint | null => {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const match = trimmed.match(/^(\d{1,3})(?:\.(\d{0,2}))?$/);
-  if (!match) return null;
-  const whole = Number(match[1]);
-  if (isNaN(whole) || whole > MAX_SLIPPAGE_PERCENT) return null;
-  const frac = match[2] ?? "";
-  const padded = (frac + "00").slice(0, DECIMAL_PLACES);
-  const fractionalValue = Number(padded);
-  if (isNaN(fractionalValue)) return null;
-  const bps = BigInt(whole * SLIPPAGE_BPS_MULTIPLIER + fractionalValue);
-  if (bps > MAX_SLIPPAGE_BPS) return null;
-  return bps;
-};
+import { MAX_SLIPPAGE_BPS, DECIMAL_PLACES, ZERO_ADDRESS, DEFAULT_SLIPPAGE, COPY_FEEDBACK_DURATION, parseSlippageBps } from "../lib/constants";
 
 const ensureCorrectChain = async (
   chainId: number | undefined,
@@ -84,7 +68,7 @@ export default function HomePage() {
   const [revokingSlot, setRevokingSlot] = useState<number | null>(null);
   const [recipient, setRecipient] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [slippage, setSlippage] = useState("1.0");
+  const [slippage, setSlippage] = useState(DEFAULT_SLIPPAGE);
   const [trading, setTrading] = useState(false);
   const [userIntent, setUserIntent] = useState<UserIntent>('claim');
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -539,7 +523,7 @@ export default function HomePage() {
       if (copiedTimeoutRef.current) {
         clearTimeout(copiedTimeoutRef.current);
       }
-      copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 3000);
+      copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), COPY_FEEDBACK_DURATION);
     } catch (err) {
       logger.warn("Failed to copy to clipboard:", err);
     }
@@ -556,7 +540,7 @@ export default function HomePage() {
       if (copiedTimeoutRef.current) {
         clearTimeout(copiedTimeoutRef.current);
       }
-      copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), 3000);
+      copiedTimeoutRef.current = setTimeout(() => setCopiedKey((prev) => (prev === "invite-link" ? null : prev)), COPY_FEEDBACK_DURATION);
     } catch (err) {
       logger.warn("Failed to copy invite link:", err);
       toast.error("Failed to copy link");
